@@ -3,7 +3,7 @@
 As of 2026-10-24
 Repository: `RegiNava1/specs-golf-guide`
 Branch: `main`
-Status: Official planning brief approved; standalone deterministic putting engine and session state machine implemented locally; no Lens implementation has started.
+Status: Official planning brief approved; standalone deterministic putting engine and session state machine implemented locally; future Lens integration and LEAF acceptance coverage documented; no Lens implementation has started.
 
 ## Verified
 - Separate RegiNava1 GitHub connection is usable for this repository.
@@ -17,6 +17,8 @@ Status: Official planning brief approved; standalone deterministic putting engin
 - Official learner-led planning interview completed and `devpost/design-brief.md` approved.
 - Standalone deterministic putting engine implemented outside the Lens Studio project with local unit coverage for alignment, left/right misses, target-zone boundaries, repeatability and aim reset.
 - Pure putting-session state machine implemented outside the Lens Studio project with deterministic placement, aiming, rolling, result, retry and reset transitions.
+- Lens integration contract documented without selecting unverified Lens Studio APIs.
+- Planned LEAF and manual Preview coverage documented for all five approved done criteria; no LEAF scenario has been implemented or executed.
 
 ## Unverified / outstanding
 - GitHub app installation's effective scope across repositories.
@@ -33,15 +35,17 @@ Status: Official planning brief approved; standalone deterministic putting engin
 - Work proceeds autonomously where safe; owner approval for permissions, expense, destructive operations, public release and product tradeoffs.
 
 ## Latest checkpoint
-- Model / effort: GPT-5.6 High requested for Local Development Batch 2.
-- Target: `RegiNava1/specs-golf-guide`, branch `main`, base `7346264a74aedebc2d1151f9187b48ebfff65327`; resulting local commit is this checkpoint commit (recorded in the batch report).
-- Files in this batch: `src/puttingSession.ts`, `test/puttingSession.test.ts`, and `PROJECT_STATE.md` only.
-- Deliverables: pure Lens-independent session state machine and focused transition/cycle tests, reusing the Batch 1 deterministic engine.
-- Validation run: Batch 1 and Batch 2 suites together with Node.js built-in test runner and TypeScript type stripping; exact result recorded in the batch report.
+- Model / effort: GPT-5.6 Medium requested for Local Development Batch 3.
+- Target: `RegiNava1/specs-golf-guide`, branch `main`, verified base `6a79496b27665d79899628286ab5f0f14c04f186`; resulting local commit is this checkpoint commit (recorded in the batch report).
+- Files in this batch: `docs/lens-integration-contract.md`, `docs/leaf-acceptance-test-plan.md`, and `PROJECT_STATE.md` only.
+- Deliverables: documentation-only integration contract and LEAF acceptance-test plan based on the approved brief and validated pure TypeScript modules.
+- Validation: both documents reviewed against the approved brief, existing source/tests, and all five done criteria. Code tests were not rerun because no executable code changed; the most recently executed suite remains 16 passed, 0 failed.
 - Lens Studio Preview: not run. The canonical Lens Studio project was intentionally left unchanged.
-- Limitations: state transitions are logic-only; rolling exposes a calculated endpoint but does not interpolate animation; there is no UI, gesture, scene, Preview or Lens integration.
+- Limitations: exact Lens scene components/materials, authored floor basis, transient aim-handle activation behavior, visual easing, and final LEAF selectors remain integration decisions requiring the supported CLAD/Preview workflow.
 - Safety / cost: local-only work; no paid services, publishing, deployment, push, account-bound operations or unrelated repository access.
 
 ## Next bounded batch
 1. Resolve or receive an officially supported path through the CLAD authorization gate.
-2. Once permitted, integrate the validated engine and state machine into one bounded Lens controller and add Preview/LEAF coverage without expanding the approved feature set.
+2. Once permitted, use `docs/lens-integration-contract.md` to implement only the core scene, coordinate adapter, and placement/aiming foundation in the canonical Lens project.
+3. Establish stable object names and add the first applicable planned LEAF scenarios, with manual Preview checks for scale, floor anchoring and comfort.
+4. Keep rolling, feedback and retry/reset integration in later bounded increments unless explicitly included in the next approved batch.
