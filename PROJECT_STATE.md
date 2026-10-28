@@ -1,9 +1,9 @@
 # SPECS Golf Guide — Project state
 
-As of 2026-10-24
+As of 2026-10-27
 Repository: `RegiNava1/specs-golf-guide`
 Branch: `main`
-Status: Official planning brief approved; standalone deterministic putting engine and session state machine implemented locally; future Lens integration and LEAF acceptance coverage documented; no Lens implementation has started.
+Status: Official planning brief approved; standalone deterministic putting engine and session state machine implemented locally; future Lens integration and LEAF acceptance coverage documented; standalone floor mapping and roll interpolation validated; no Lens scene implementation has started.
 
 ## Verified
 - Separate RegiNava1 GitHub connection is usable for this repository.
@@ -49,3 +49,13 @@ Status: Official planning brief approved; standalone deterministic putting engin
 2. Once permitted, use `docs/lens-integration-contract.md` to implement only the core scene, coordinate adapter, and placement/aiming foundation in the canonical Lens project.
 3. Establish stable object names and add the first applicable planned LEAF scenarios, with manual Preview checks for scale, floor anchoring and comfort.
 4. Keep rolling, feedback and retry/reset integration in later bounded increments unless explicitly included in the next approved batch.
+
+## Batch 4 — ChatGPT-first source development (2026-10-27)
+- Target: `RegiNava1/specs-golf-guide`, private `main`; initial base `9c586cc9d38d8dfe215676ad8a1bb50a5801ec51`.
+- Added `src/floorCoordinates.ts`, `test/floorCoordinates.test.ts`, `src/puttAnimation.ts`, and `test/puttAnimation.test.ts` in commit `5102ee6cd925872c1c0d87dc54168e10e2641e76`.
+- Ran Node v22.16 local tests for the four new files: 11 passed, 0 failed, 0 skipped. Existing 16 tests were not rerun in this environment; last reported baseline was 16 passed.
+- Coordinates: supplied centimeter-scale orthonormal floor basis, direction mapping, and setup-local placement-offset subtraction. No assumption about actual Lens Studio world axes or floor height.
+- Roll: pure deterministic 1.5-second linear interpolation, clamping, and completion flag; no scene animation or input binding.
+- Lens Studio Preview and LEAF: not executed; all five approved acceptance criteria remain unverified in Preview.
+- No canonical Lens Studio project, CLAD configuration, or untracked local files were changed; no paid service or publishing.
+- Next: review contract compatibility and integrate through the official supported Lens Studio/CLAD workflow when available. Static TypeScript type-checking and combined existing+new test-suite run remain outstanding.
