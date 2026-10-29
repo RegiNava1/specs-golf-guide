@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPECS Golf Guide — Local Prototype</title>
+    <link rel="stylesheet" href="/prototype/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="intro" aria-labelledby="prototype-title">
+        <p class="eyebrow">Local interaction prototype</p>
+        <h1 id="prototype-title">SPECS Golf Guide</h1>
+        <p>Test the deterministic putting flow from above. Distances are shown in centimeters; this browser tool does not represent a validated SPECS Lens.</p>
+      </section>
+      <section class="prototype-card">
+        <div class="course-wrap">
+          <svg id="course" class="course" viewBox="-120 -30 240 270" role="img" aria-label="Top-down putting setup with ball, aim line, regulation hole, and practice target">
+            <defs>
+              <pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M 25 0 L 0 0 0 25" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="0.7" /></pattern>
+              <filter id="ball-shadow" x="-100%" y="-100%" width="300%" height="300%"><feDropShadow dx="0" dy="1.4" stdDeviation="1.1" flood-opacity=".45" /></filter>
+            </defs>
+            <rect x="-120" y="-30" width="240" height="270" rx="12" fill="url(#grid)" />
+            <path class="center-guide" d="M 0 -30 L 0 240" />
+            <g id="target-group"><circle id="target-zone" class="target-zone" r="11.25" /><circle id="regulation-hole" class="regulation-hole" r="5.4" /></g>
+            <line id="aim-line" class="aim-line" />
+            <circle id="aim-handle" class="aim-handle" r="6" />
+            <circle id="ball" class="ball" r="2.15" filter="url(#ball-shadow)" />
+            <g class="golfer-marker" aria-hidden="true"><circle cx="0" cy="222" r="4" /><path d="M 0 226 L 0 238 M -6 232 L 6 232" /></g>
+          </svg>
+          <p id="interaction-hint" class="interaction-hint" aria-live="polite"></p>
+        </div>
+        <aside class="controls" aria-label="Putting controls">
+          <div class="readout"><span>Phase</span><strong id="phase-readout">Initial placement</strong></div>
+          <div class="readout"><span>Aim</span><strong id="aim-readout">0.000, 1.000</strong></div>
+          <div id="feedback" class="feedback" aria-live="assertive">Awaiting putt</div>
+          <div class="button-grid">
+            <button id="move-button" type="button">Move Setup</button>
+            <button id="confirm-button" type="button">Confirm Placement</button>
+            <button id="aim-button" type="button">Adjust Aim</button>
+            <button id="putt-button" class="primary" type="button">Practice Putt</button>
+            <button id="retry-button" type="button">Try Again</button>
+            <button id="reset-button" class="quiet" type="button">Reset Setup</button>
+          </div>
+          <dl class="legend">
+            <div><dt><span class="legend-dot target"></span>Practice zone</dt><dd>22.5 cm</dd></div>
+            <div><dt><span class="legend-dot hole"></span>Regulation hole</dt><dd>10.8 cm</dd></div>
+            <div><dt><span class="legend-dot ball-key"></span>Virtual ball</dt><dd>4.3 cm</dd></div>
+          </dl>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/prototype/app.ts"></script>
+  </body>
+</html>

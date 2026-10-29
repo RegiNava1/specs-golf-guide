@@ -72,3 +72,15 @@ Status: Official planning brief approved; standalone deterministic putting engin
 - Limitations: no Lens/SIK event bindings, scene objects, handle hit testing, drag-to-floor conversion, visual state updates, animation playback, Preview evidence or LEAF scenarios.
 - Safety / cost: local-only work; no paid services, publishing, deployment, push, authentication changes, unrelated repository access or canonical Lens project changes.
 - Recommended next bounded batch: once the official CLAD authorization workflow is available, bind this adapter to the first stable scene/control selectors and validate placement plus aim interactions in Interactive Preview before adding rolling or feedback integration.
+
+## Batch 7 — Local interactive prototype (2026-10-28)
+- Model / effort: GPT-5.6 Medium requested.
+- Target: `RegiNava1/specs-golf-guide`, private `main`, verified base `c4cd2473d4bcf61888201476a84360bba4997042`; local and remote result recorded in the batch report.
+- Added `src/prototypeController.ts`, `prototype/index.html`, `prototype/app.ts`, `prototype/styles.css`, `prototype/server.mjs`, and `test/prototypeFlow.test.ts`; updated `README.md` and this checkpoint only.
+- Implemented a dependency-free localhost prototype that reuses the existing engine, reducer, floor-coordinate adapter, roll sampler, and interaction adapter. The browser UI supports setup movement/confirmation, aim adjustment, deterministic 1.5-second putting, exact outcome feedback, retry, and reset.
+- Automated validation: Node v24.16.0 combined suite passed 38 tests, 0 failed, 0 skipped. The new end-to-end test covers placement, direct success, left/right misses, reset/repeat, midpoint/completion timing, and invalid interaction handling.
+- Browser validation: locally rendered and manually driven through moved placement, direct `On Target`, left `Missed Left`, right `Missed Right`, reset, and repeated direct success. The 22.5 cm practice zone, 10.8 cm regulation hole, 4.3 cm ball, aim line, phase controls, and feedback were visually distinct in the top-down representation.
+- Lens Studio Preview and LEAF: not run. The canonical Lens Studio project, CLAD, MCP, SPECS authentication, and authorization configuration were intentionally untouched. No Lens acceptance criterion is passed by this prototype.
+- Provisional progress: overall 60%, core logic/preparation 97%, Lens Studio implementation 5%. The increase reflects validated local end-to-end integration only; Lens implementation is unchanged.
+- Safety / cost: zero dependencies and no paid services. Existing untracked files were preserved, and no Lens Studio or unrelated repository files were modified.
+- Recommended next bounded batch: add a narrow browser automation smoke test only if repeatable UI regression coverage is needed; otherwise wait for the officially supported CLAD authorization path, then port stable selectors and the placement/aim slice into SPECS Interactive Preview before rolling/feedback integration.
