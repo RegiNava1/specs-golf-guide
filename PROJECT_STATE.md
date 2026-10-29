@@ -94,3 +94,13 @@ Status: Official planning brief approved; standalone deterministic putting engin
 - No verified Lens Studio asset import, scene objects, CLAD authorization, Interactive Preview or LEAF tests. Lens implementation percentage remains 5%; overall 60% and core preparation 97% remain provisional and unchanged.
 - No changes to the untracked canonical `lens-project/`, authentication, tooling or unrelated projects; no paid dependencies or Lens publication.
 - Next: once official local editor workflow is available, use the handoff as reference for a first visible 3D scene, then placement and aiming. Do not claim the SVG files import into Lens Studio without checking.
+
+
+## Batch 8B — Canonical visual reference package (2026-10-29)
+- Target private `RegiNava1/specs-golf-guide` `main`, base `f172f032cc6005268e0e8dbe3c53045d5f9f5a89`.
+- Added `docs/canonical-visual-assets.md`, `assets/canonical/visual-asset-manifest.json` and five SVG authoring references in commit `f8ff3ff4386b5e0e6cee032515770e32f6587dfa`.
+- Canonical authored defaults: 4.3 cm white ball, 10.8 cm hole marker, 22.5 cm practice zone, cyan 150 cm aim line, 12 cm handles, underlying floor as ground, optional flag disabled.
+- Validation: fetched committed files; manifest parses as JSON with eight enumerated assets; five SVGs passed basic opening/closing markup sanity checks (not a full XML or rendering check). No TypeScript changed; last executed automated suite remains Batch 7's 38 passed.
+- No Lens Studio import, material/scene construction, SIK, Interactive Preview or LEAF tests performed. The generated visual concept sheet is illustrative only and was not committed as dimensional evidence.
+- Progress unchanged at overall 60%, logic/preparation 97%, Lens implementation 5% (provisional). Canonical Lens project and account configuration untouched; no paid services or publication.
+- Next: officially supported CLAD editor readiness, native geometry/material construction and real Preview/LEAF validation of the reference package. No additional offline speculative infrastructure recommended.
