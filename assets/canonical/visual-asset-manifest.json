@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "1.0",
+  "status": "offline-reference-only",
+  "units": "cm",
+  "designBrief": "devpost/design-brief.md",
+  "colors": {
+    "guidanceCyan": "#67E9FF",
+    "brightWhite": "#F4FFFF",
+    "successTeal": "#3BE3A2",
+    "missCoral": "#FF786E",
+    "secondary": "#AFC4CC"
+  },
+  "layout": {
+    "ball": {
+      "x": 0,
+      "y": 0
+    },
+    "target": {
+      "x": 0,
+      "y": 150
+    },
+    "viewerToBallCm": 80,
+    "ballToTargetCm": 150,
+    "rollDurationSeconds": 1.5
+  },
+  "assets": [
+    {
+      "id": "GOLF_BALL_001",
+      "kind": "3d-primitive",
+      "diameterCm": 4.3,
+      "model": "sphere",
+      "reference": "assets/canonical/golf-ball-reference.svg"
+    },
+    {
+      "id": "HOLE_MARKER_001",
+      "kind": "floor-geometry",
+      "diameterCm": 10.8,
+      "reference": "assets/canonical/hole-reference.svg"
+    },
+    {
+      "id": "PRACTICE_ZONE_001",
+      "kind": "floor-geometry",
+      "diameterCm": 22.5,
+      "reference": "assets/offline/putting-target.svg"
+    },
+    {
+      "id": "AIM_GUIDE_001",
+      "kind": "floor-geometry",
+      "initialLengthCm": 150,
+      "reference": "assets/canonical/aim-line-reference.svg"
+    },
+    {
+      "id": "PLACE_HANDLE_001",
+      "kind": "interaction-visual",
+      "diameterCm": 12,
+      "reference": "assets/offline/interaction-handle.svg"
+    },
+    {
+      "id": "AIM_HANDLE_001",
+      "kind": "interaction-visual",
+      "diameterCm": 12,
+      "reference": "assets/offline/interaction-handle.svg"
+    },
+    {
+      "id": "GROUND_001",
+      "kind": "real-or-preview-floor",
+      "opaqueGeneratedFloor": false,
+      "reference": "assets/canonical/ground-reference.svg"
+    },
+    {
+      "id": "FLAG_OPTIONAL_001",
+      "kind": "optional-decoration",
+      "enabledByDefault": false,
+      "reference": "assets/canonical/flag-optional-reference.svg",
+      "heightCm": null
+    }
+  ],
+  "validation": {
+    "lensStudioImport": "not-tested",
+    "interactivePreview": "not-run",
+    "leaf": "not-run"
+  }
+}

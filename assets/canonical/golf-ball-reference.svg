@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-label="White golf ball authoring reference, 4.3 cm sphere">
+<title>GOLF_BALL_001 — golf ball appearance reference, not 3D geometry</title>
+<defs><radialGradient id="g" cx="34%" cy="28%" r="75%"><stop stop-color="#FFFFFF"/><stop offset=".7" stop-color="#F4FFFF"/><stop offset="1" stop-color="#B8C8CC"/></radialGradient><pattern id="dim" width="25" height="22" patternUnits="userSpaceOnUse"><circle cx="12" cy="10" r="6" fill="none" stroke="#AFC4CC" stroke-width="1.3" opacity=".6"/></pattern><clipPath id="ball"><circle cx="120" cy="120" r="94"/></clipPath></defs>
+<circle cx="120" cy="120" r="94" fill="url(#g)"/><g clip-path="url(#ball)"><rect width="240" height="240" fill="url(#dim)"/></g><circle cx="120" cy="120" r="94" fill="none" stroke="#F4FFFF" stroke-width="2"/></svg>
