@@ -1,9 +1,9 @@
 # SPECS Golf Guide — Project state
 
-As of 2026-10-27
+As of 2026-10-28
 Repository: `RegiNava1/specs-golf-guide`
 Branch: `main`
-Status: Official planning brief approved; standalone deterministic putting engine and session state machine implemented locally; future Lens integration and LEAF acceptance coverage documented; standalone floor mapping and roll interpolation validated; no Lens scene implementation has started.
+Status: Official planning brief approved; standalone deterministic putting engine, session state machine, floor mapping, roll interpolation, and offline interaction adapter validated; future Lens integration and LEAF acceptance coverage documented; no Lens scene implementation has started.
 
 ## Verified
 - Separate RegiNava1 GitHub connection is usable for this repository.
@@ -17,6 +17,7 @@ Status: Official planning brief approved; standalone deterministic putting engin
 - Official learner-led planning interview completed and `devpost/design-brief.md` approved.
 - Standalone deterministic putting engine implemented outside the Lens Studio project with local unit coverage for alignment, left/right misses, target-zone boundaries, repeatability and aim reset.
 - Pure putting-session state machine implemented outside the Lens Studio project with deterministic placement, aiming, rolling, result, retry and reset transitions.
+- Pure interaction adapter implemented outside the Lens Studio project with guarded placement and aim modes, deterministic reducer dispatch, duplicate-completion protection, retry and reset behavior.
 - Lens integration contract documented without selecting unverified Lens Studio APIs.
 - Planned LEAF and manual Preview coverage documented for all five approved done criteria; no LEAF scenario has been implemented or executed.
 
@@ -59,3 +60,15 @@ Status: Official planning brief approved; standalone deterministic putting engin
 - Lens Studio Preview and LEAF: not executed; all five approved acceptance criteria remain unverified in Preview.
 - No canonical Lens Studio project, CLAD configuration, or untracked local files were changed; no paid service or publishing.
 - Next: review contract compatibility and integrate through the official supported Lens Studio/CLAD workflow when available. Static TypeScript type-checking and combined existing+new test-suite run remain outstanding.
+
+## Batch 6 — Offline interaction foundation (2026-10-28)
+- Model / effort: GPT-5.6 Medium requested.
+- Target: `RegiNava1/specs-golf-guide`, branch `main`, verified base `bcd856c16aa5d00c7d82229d254c947e29956776`; resulting local commit is this checkpoint commit (recorded in the batch report).
+- Added `src/puttingInteraction.ts` and `test/puttingInteraction.test.ts`; updated `PROJECT_STATE.md` only for the mandatory checkpoint.
+- Implemented a pure interaction adapter that separates transient placement/aim UI modes from durable reducer phases and reuses existing reducer actions for placement, aim, putt, completion, retry and reset.
+- Validation: Node v24.16.0 combined suite passed 35 tests, 0 failed, 0 skipped, including eight focused interaction tests. No dependencies were installed.
+- Lens Studio Preview and LEAF: not run. The canonical Lens Studio project, CLAD tooling, authorization configuration and MCP were intentionally untouched; all five approved Preview acceptance criteria remain unverified.
+- Progress estimate: overall 57%, core logic/preparation 94%, Lens Studio implementation 5%. Only validated interaction logic increased the first two estimates; the Lens implementation estimate is unchanged.
+- Limitations: no Lens/SIK event bindings, scene objects, handle hit testing, drag-to-floor conversion, visual state updates, animation playback, Preview evidence or LEAF scenarios.
+- Safety / cost: local-only work; no paid services, publishing, deployment, push, authentication changes, unrelated repository access or canonical Lens project changes.
+- Recommended next bounded batch: once the official CLAD authorization workflow is available, bind this adapter to the first stable scene/control selectors and validate placement plus aim interactions in Interactive Preview before adding rolling or feedback integration.
