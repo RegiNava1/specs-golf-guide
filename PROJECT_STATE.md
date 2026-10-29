@@ -84,3 +84,13 @@ Status: Official planning brief approved; standalone deterministic putting engin
 - Provisional progress: overall 60%, core logic/preparation 97%, Lens Studio implementation 5%. The increase reflects validated local end-to-end integration only; Lens implementation is unchanged.
 - Safety / cost: zero dependencies and no paid services. Existing untracked files were preserved, and no Lens Studio or unrelated repository files were modified.
 - Recommended next bounded batch: add a narrow browser automation smoke test only if repeatable UI regression coverage is needed; otherwise wait for the officially supported CLAD authorization path, then port stable selectors and the placement/aim slice into SPECS Interactive Preview before rolling/feedback integration.
+
+
+## Batch 8 — Offline SPECS scene handoff (2026-10-28)
+- Target private `RegiNava1/specs-golf-guide` main, initial base `f2cbcc3b5c2d48e028c579b53e01730182645ece`.
+- Added `docs/offline-scene-assembly.md`, `assets/offline/putting-target.svg`, `assets/offline/interaction-handle.svg` in `96047aa1db303c29f7700957f6b8a640b0c27b0f`.
+- Deliverables: proposed logical scene hierarchy/stable names, transform ownership, dimensions, visibility and reducer binding; two high-contrast proportional vector art references.
+- Validation: reviewed specifications against the approved brief and integration contract. The two SVGs are well-formed XML in local validation. No new executable TypeScript code or test changes, so the most recently recorded suite remains Batch 7's 38 passed.
+- No verified Lens Studio asset import, scene objects, CLAD authorization, Interactive Preview or LEAF tests. Lens implementation percentage remains 5%; overall 60% and core preparation 97% remain provisional and unchanged.
+- No changes to the untracked canonical `lens-project/`, authentication, tooling or unrelated projects; no paid dependencies or Lens publication.
+- Next: once official local editor workflow is available, use the handoff as reference for a first visible 3D scene, then placement and aiming. Do not claim the SVG files import into Lens Studio without checking.
