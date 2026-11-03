@@ -573,6 +573,22 @@
     - !<own> a6af4948-9adc-4052-ae22-db902dd2764e
   Components:
     []
+- !<ScriptComponent/1282c2e7-a5ef-4280-946f-d2ef6d99279a>
+  PrefabRemaps:
+    []
+  Name: GolfOutcomeFeedbackUI
+  Enabled: true
+  ScriptAsset: !<reference> c6d8ee50-711a-4ec6-96fb-c459a11063df
+  ScriptInputsDefault:
+    {}
+  ScriptTypesDefault:
+    {}
+  ScriptInputs:
+    "":
+      {}
+  ScriptTypes:
+    "":
+      {}
 - !<ScriptComponent/15a1943f-3bd6-4ce2-a400-2665b5d9c0b6>
   PrefabRemaps:
     []
@@ -928,6 +944,21 @@
   BlendNormals: false
   BlendShapes:
     {}
+- !<SceneObject/379eb060-68df-4d07-a486-982c7f740ea0>
+  PrefabRemaps:
+    []
+  Name: OutcomeFeedback_Root
+  Enabled: true
+  Layers: 1
+  LocalTransform: !<TransformEntity>
+    Position: {x: 30.000000, y: 18.000000, z: -230.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    HasSegmentScaleCompensation: false
+  Children:
+    []
+  Components:
+    - !<own> 1282c2e7-a5ef-4280-946f-d2ef6d99279a
 - !<SceneObject/38562bff-09c5-4232-bff1-7ea62a1e7ec5>
   PrefabRemaps:
     []
@@ -1334,6 +1365,7 @@
     - !<own> 3970631e-d67c-4795-86c4-ed0ae438c8c3
     - !<own> 41b3c4a4-ba7a-4b31-88f9-179b2333448c
     - !<own> 3ce4c898-d04d-4ecd-9880-91578ccb0f20
+    - !<own> 379eb060-68df-4d07-a486-982c7f740ea0
   Components:
     []
 - !<SceneObject/602daf2e-cb9d-4d56-9570-bfd3d5857368>
@@ -1518,6 +1550,7 @@
       aimDragInteraction: !<MappingBased.AssignableType_3> 15a1943f-3bd6-4ce2-a400-2665b5d9c0b6
       targetAnchor: !<reference.SceneObject> 3970631e-d67c-4795-86c4-ed0ae438c8c3
       ballVisual: !<reference.SceneObject> 8ea3f769-4e55-4fc4-b1e2-ac5dd9a5f1bb
+      outcomeFeedback: !<MappingBased.AssignableType_4> 1282c2e7-a5ef-4280-946f-d2ef6d99279a
   ScriptTypes:
     "":
       {}

@@ -1,17 +1,19 @@
 import {AimDragInteraction} from "./AimDragInteraction"
+import {
+  classifyPuttEndpoint,
+  PRACTICE_TARGET_ZONE_DIAMETER_CM,
+} from "./GolfOutcome"
+import {GolfOutcomeFeedbackUI} from "./GolfOutcomeFeedbackUI"
 import {GolfPlacementUI} from "./GolfPlacementUI"
 import {PlacementDragInteraction} from "./PlacementDragInteraction"
-
 type PlacementPhase =
   | "initial-placement"
   | "moving-setup"
   | "aiming"
   | "rolling"
   | "result"
-
 const PUTT_TRAVEL_DISTANCE_CM = 150
 const PUTT_ROLL_DURATION_SECONDS = 1.5
-
 /**
  * Lens adapter for the already-tested ACTIVATE_MOVE_SETUP,
  * MOVE_PLACEMENT_HANDLE, and CONFIRM_PLACEMENT reducer actions.
@@ -20,32 +22,26 @@ const PUTT_ROLL_DURATION_SECONDS = 1.5
 export class GolfPlacementController extends BaseScriptComponent {
   @input
   puttingSetupRoot!: SceneObject
-
   @input
   placementHandle!: SceneObject
-
   @input
   dragInteraction!: PlacementDragInteraction
-
   @input
   placementUI!: GolfPlacementUI
-
   @input
   aimLineAnchor!: SceneObject
-
   @input
   aimHandle!: SceneObject
-
   @input
   aimDragInteraction!: AimDragInteraction
-
   @input
   targetAnchor!: SceneObject
-
   @input
   @hint("The existing golf-ball visual moved during the deterministic putt roll")
   ballVisual!: SceneObject
-
+  @input
+  @hint("Target-adjacent UIKit result shown after the roll completes")
+  outcomeFeedback!: GolfOutcomeFeedbackUI
   private phase: PlacementPhase = "initial-placement"
   private aimAdjustmentActive = false
   private aimDirection = new vec3(0, 0, -1)
@@ -56,7 +52,6 @@ export class GolfPlacementController extends BaseScriptComponent {
   private rollElapsedSeconds = 0
   private midpointLogged = false
   private rollCompletionDispatched = false
-
   onAwake(): void {
     this.createEvent("UpdateEvent").bind(() => this.updateRoll())
     this.createEvent("OnStartEvent").bind(() => {
@@ -64,14 +59,13 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.aimDragInteraction.setInteractionEnabled(false)
       this.placementHandle.enabled = true
       this.aimHandle.enabled = false
-
+      this.outcomeFeedback.hide()
       this.placementUI.onMoveSetup.add(() => this.activateMoveSetup())
       this.placementUI.onConfirmPlacement.add(() => this.confirmPlacement())
       this.placementUI.onAdjustAim.add(() => this.activateAdjustAim())
       this.placementUI.onPracticePutt.add(() => this.startPracticePutt())
       this.dragInteraction.onDragUpdate.add((position) => this.handlePlacementUpdate(position))
       this.aimDragInteraction.onDragUpdate.add((direction) => this.handleAimUpdate(direction))
-
       print("[GolfPlacement] ready: initial-placement")
     })
   }
@@ -192,6 +186,7 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.aimAdjustmentActive = false
     this.aimDragInteraction.setInteractionEnabled(false)
     this.aimHandle.enabled = false
+    this.outcomeFeedback.hide()
     this.placementUI.showRolling()
 
     console.log(
@@ -235,9 +230,15 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.placementUI.showRollComplete()
 
     const targetPosition = this.targetAnchor.getTransform().getWorldPosition()
+    const outcome = classifyPuttEndpoint(
+      this.rollEndPosition,
+      targetPosition,
+      this.rollStartPosition
+    )
+    this.outcomeFeedback.showOutcome(outcome.classification)
     const targetStable = targetPosition.distance(this.targetPositionAtRollStart) < 0.001
     console.log(
-      `[GolfPutt] action=COMPLETE_ROLL phase=result elapsed=${this.rollElapsedSeconds.toFixed(3)} position=${this.formatPosition(this.rollEndPosition)} targetStable=${targetStable}`
+      `[GolfPutt] action=COMPLETE_ROLL phase=result outcome=${outcome.classification} endpointErrorCm=${outcome.distanceFromTargetCm.toFixed(2)} targetZoneDiameterCm=${PRACTICE_TARGET_ZONE_DIAMETER_CM.toFixed(2)} elapsed=${this.rollElapsedSeconds.toFixed(3)} position=${this.formatPosition(this.rollEndPosition)} targetStable=${targetStable}`
     )
   }
 

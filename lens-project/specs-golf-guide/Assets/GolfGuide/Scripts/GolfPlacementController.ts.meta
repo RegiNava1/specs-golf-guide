@@ -33,6 +33,7 @@
     aimLineAnchor: false
     ballVisual: false
     dragInteraction: false
+    outcomeFeedback: false
     placementHandle: false
     placementUI: false
     puttingSetupRoot: false
@@ -55,6 +56,7 @@
       aimDragInteraction: !<MappingBased.AssignableType_3> 00000000-0000-0000-0000-000000000000
       targetAnchor: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
       ballVisual: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      outcomeFeedback: !<MappingBased.AssignableType_4> 00000000-0000-0000-0000-000000000000
   ScriptTypes:
     -
       {}
@@ -68,3 +70,4 @@
     - // @input AssignableType_3 aimDragInteraction
     - // @input SceneObject targetAnchor
     - '// @input SceneObject ballVisual {"hint":"The existing golf-ball visual moved during the deterministic putt roll"}'
+    - '// @input AssignableType_4 outcomeFeedback {"hint":"Target-adjacent UIKit result shown after the roll completes"}'
