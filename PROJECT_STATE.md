@@ -144,3 +144,14 @@ Status: Official planning brief approved; standalone deterministic putting engin
 - LEAF: not installed or run. No already-compatible Leaf package/scenario exists, and this batch did not install packages or inspection helpers.
 - Safety: no `CaptureRuntimeViewTool`, AiPreviewAgentInspect, package injection or package changes, authentication changes, publishing, unrelated-repository access, or changes to the pre-existing `.esproj` metadata were included.
 - Next bounded step: diagnose and correct the station's floor alignment in a separate bounded batch, then revalidate all five criteria in SPECS 27 Preview. Afterward perform submission-readiness review, demo capture, privacy/security checks, and Devpost packaging without adding features.
+
+## Batch 17 — Submission readiness audit (2026-11-03)
+- Target: private `RegiNava1/specs-golf-guide` `main`, audited baseline `72fb0324222b9805af6288f6464efe57ca4fa747`.
+- Added `docs/submission-readiness-audit.md`; no Lens source, scene, package, authentication, or publication settings were changed.
+- Fresh private-remote clone succeeded, all seven Git LFS objects materialized, `git lfs fsck` passed, and the dependency-free Node suite passed 43 tests with 0 failures.
+- Tracked inventory includes the canonical scene/project, six gameplay scripts, four validated PBR materials plus shader, four golf meshes, render assets, SIK and UIKit, and matching metadata.
+- Static reference validation found two dangling Ambient Light environment-texture UUIDs. Current canonical compilation, Preview and runtime logs are clean, but a fresh remote clone was not opened in Lens Studio, so clean-clone editor validation remains outstanding.
+- Security audit of `origin/main` found no credentials, private keys, local absolute paths, helper-package traces, or generated MCP/live-instance files. A local untracked `signing_key.pem` is not ignored and must be protected before any public-visibility change. The repository remains private pending explicit owner approval.
+- Acceptance evidence remains manual/native SPECS 27 Preview plus 43 Node tests; no LEAF package, scenario, or pass exists.
+- Official Devpost requirements were rechecked: public repository, public YouTube video under three minutes showing Preview, English text description, and all live submission-form fields by 2026-11-09 5:00 PM EST.
+- Next bounded step: resolve the two environment references and signing-key ignore risk, validate a fresh remote clone in Lens Studio, then record/review the demo. Repository publication and Devpost submission remain explicit owner actions.
