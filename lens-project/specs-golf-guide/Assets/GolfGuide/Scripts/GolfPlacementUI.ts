@@ -22,12 +22,16 @@ export class GolfPlacementUI extends BaseScriptComponent {
   public readonly onConfirmPlacement = new Event<void>()
   public readonly onAdjustAim = new Event<void>()
   public readonly onPracticePutt = new Event<void>()
+  public readonly onTryAgain = new Event<void>()
+  public readonly onResetSetup = new Event<void>()
 
   private placementControlsObject!: SceneObject
   private aimControlsObject!: SceneObject
+  private resultControlsObject!: SceneObject
   private moveButtonObject!: SceneObject
   private confirmButtonObject!: SceneObject
   private adjustButton!: Button
+  private resultRevealButton!: Button
   private statusContent!: ElementContent
 
   onAwake(): void {
@@ -98,6 +102,42 @@ export class GolfPlacementUI extends BaseScriptComponent {
       this.aimControlsObject.enabled = false
     })
 
+    this.resultControlsObject = global.scene.createSceneObject("ResultControls_Content")
+    this.resultControlsObject.setParent(this.sceneObject)
+    this.resultControlsObject.getTransform().setLocalPosition(new vec3(0, 0, 0.8))
+
+    const resultLayout = this.resultControlsObject.createComponent(
+      FlexLayout.getTypeName()
+    ) as FlexLayout
+    resultLayout.width = PANEL_WIDTH_CM - 3
+    resultLayout.height = PANEL_HEIGHT_CM - 2
+    resultLayout.direction = FlexDirection.Row
+    resultLayout.justifyContent = FlexJustify.Center
+    resultLayout.alignItems = FlexAlign.Center
+    resultLayout.columnGap = 1.2
+
+    const tryAgainButtonObject = this.createButton(
+      this.resultControlsObject,
+      "TryAgain_Control",
+      "Try Again",
+      "Primary",
+      () => this.onTryAgain.invoke()
+    )
+    this.resultRevealButton = tryAgainButtonObject.getComponent(
+      Button.getTypeName()
+    ) as Button
+    this.createButton(
+      this.resultControlsObject,
+      "ResetSetup_Control",
+      "Reset Setup",
+      "Secondary",
+      () => this.onResetSetup.invoke()
+    )
+    this.resultRevealButton.opacity = 0
+    this.resultRevealButton.onInitialized.add(() => {
+      this.resultControlsObject.enabled = false
+    })
+
     const statusObject = global.scene.createSceneObject("PlacementStatus")
     statusObject.setParent(this.sceneObject)
     statusObject.getTransform().setLocalPosition(new vec3(0, -5.5, 0.7))
@@ -126,11 +166,29 @@ export class GolfPlacementUI extends BaseScriptComponent {
   public showRolling(): void {
     this.statusContent.text = "Ball rolling..."
     this.aimControlsObject.enabled = false
+    this.resultControlsObject.enabled = false
   }
 
   public showRollComplete(): void {
     this.statusContent.text = "Practice putt complete"
     this.aimControlsObject.enabled = false
+    this.resultRevealButton.opacity = 1
+    this.resultControlsObject.enabled = true
+  }
+
+  public showRetryReady(): void {
+    this.statusContent.text = "Aim preserved - adjust or putt again"
+    this.placementControlsObject.enabled = false
+    this.resultControlsObject.enabled = false
+    this.adjustButton.opacity = 1
+    this.aimControlsObject.enabled = true
+  }
+
+  public showInitialPlacement(): void {
+    this.statusContent.text = "Select Move Setup, then drag the cyan handle"
+    this.resultControlsObject.enabled = false
+    this.aimControlsObject.enabled = false
+    this.placementControlsObject.enabled = true
   }
 
   private createButton(

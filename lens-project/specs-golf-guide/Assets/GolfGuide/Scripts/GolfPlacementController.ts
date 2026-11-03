@@ -52,6 +52,13 @@ export class GolfPlacementController extends BaseScriptComponent {
   private rollElapsedSeconds = 0
   private midpointLogged = false
   private rollCompletionDispatched = false
+  private initialSetupLocalPosition = vec3.zero()
+  private initialBallLocalPosition = vec3.zero()
+  private initialTargetLocalPosition = vec3.zero()
+  private initialAimLineLocalPosition = vec3.zero()
+  private initialAimLineLocalRotation = quat.quatIdentity()
+  private initialAimHandleLocalPosition = vec3.zero()
+  private initialPlacementHandleLocalPosition = vec3.zero()
   onAwake(): void {
     this.createEvent("UpdateEvent").bind(() => this.updateRoll())
     this.createEvent("OnStartEvent").bind(() => {
@@ -59,11 +66,14 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.aimDragInteraction.setInteractionEnabled(false)
       this.placementHandle.enabled = true
       this.aimHandle.enabled = false
+      this.captureInitialArrangement()
       this.outcomeFeedback.hide()
       this.placementUI.onMoveSetup.add(() => this.activateMoveSetup())
       this.placementUI.onConfirmPlacement.add(() => this.confirmPlacement())
       this.placementUI.onAdjustAim.add(() => this.activateAdjustAim())
       this.placementUI.onPracticePutt.add(() => this.startPracticePutt())
+      this.placementUI.onTryAgain.add(() => this.tryAgain())
+      this.placementUI.onResetSetup.add(() => this.resetSetup())
       this.dragInteraction.onDragUpdate.add((position) => this.handlePlacementUpdate(position))
       this.aimDragInteraction.onDragUpdate.add((direction) => this.handleAimUpdate(direction))
       print("[GolfPlacement] ready: initial-placement")
@@ -240,6 +250,102 @@ export class GolfPlacementController extends BaseScriptComponent {
     console.log(
       `[GolfPutt] action=COMPLETE_ROLL phase=result outcome=${outcome.classification} endpointErrorCm=${outcome.distanceFromTargetCm.toFixed(2)} targetZoneDiameterCm=${PRACTICE_TARGET_ZONE_DIAMETER_CM.toFixed(2)} elapsed=${this.rollElapsedSeconds.toFixed(3)} position=${this.formatPosition(this.rollEndPosition)} targetStable=${targetStable}`
     )
+  }
+
+  private tryAgain(): void {
+    if (this.phase !== "result") {
+      return
+    }
+
+    this.ballVisual.getTransform().setWorldPosition(this.rollStartPosition)
+    this.phase = "aiming"
+    this.aimAdjustmentActive = false
+    this.rollElapsedSeconds = 0
+    this.midpointLogged = false
+    this.rollCompletionDispatched = false
+    this.dragInteraction.setInteractionEnabled(false)
+    this.aimDragInteraction.setInteractionEnabled(false)
+    this.placementHandle.enabled = false
+    this.aimHandle.enabled = false
+    this.outcomeFeedback.hide()
+    this.placementUI.showRetryReady()
+
+    const setupPosition = this.puttingSetupRoot.getTransform().getLocalPosition()
+    console.log(
+      `[GolfSession] action=TRY_AGAIN phase=aiming ball=${this.formatPosition(
+        this.rollStartPosition
+      )} setup=${this.formatPosition(setupPosition)} aim=(${this.aimDirection.x.toFixed(
+        4
+      )},${this.aimDirection.z.toFixed(4)}) feedbackCleared=true`
+    )
+  }
+
+  private resetSetup(): void {
+    if (this.phase !== "result") {
+      return
+    }
+
+    this.puttingSetupRoot
+      .getTransform()
+      .setLocalPosition(this.initialSetupLocalPosition)
+    this.ballVisual.getTransform().setLocalPosition(this.initialBallLocalPosition)
+    this.targetAnchor
+      .getTransform()
+      .setLocalPosition(this.initialTargetLocalPosition)
+    this.aimLineAnchor
+      .getTransform()
+      .setLocalPosition(this.initialAimLineLocalPosition)
+    this.aimLineAnchor
+      .getTransform()
+      .setLocalRotation(this.initialAimLineLocalRotation)
+    this.aimHandle
+      .getTransform()
+      .setLocalPosition(this.initialAimHandleLocalPosition)
+    this.placementHandle
+      .getTransform()
+      .setLocalPosition(this.initialPlacementHandleLocalPosition)
+
+    this.phase = "initial-placement"
+    this.aimAdjustmentActive = false
+    this.aimDirection = new vec3(0, 0, -1)
+    this.rollStartPosition = this.ballVisual.getTransform().getWorldPosition()
+    this.rollEndPosition = this.rollStartPosition
+    this.rollElapsedSeconds = 0
+    this.midpointLogged = false
+    this.rollCompletionDispatched = false
+    this.dragInteraction.setInteractionEnabled(false)
+    this.aimDragInteraction.setInteractionEnabled(false)
+    this.placementHandle.enabled = true
+    this.aimHandle.enabled = false
+    this.outcomeFeedback.hide()
+    this.placementUI.showInitialPlacement()
+
+    console.log(
+      `[GolfSession] action=RESET_SETUP phase=initial-placement setup=${this.formatPosition(
+        this.initialSetupLocalPosition
+      )} ball=${this.formatPosition(
+        this.ballVisual.getTransform().getWorldPosition()
+      )} target=${this.formatPosition(
+        this.targetAnchor.getTransform().getWorldPosition()
+      )} aim=(0.0000,-1.0000) feedbackCleared=true`
+    )
+  }
+
+  private captureInitialArrangement(): void {
+    this.initialSetupLocalPosition =
+      this.puttingSetupRoot.getTransform().getLocalPosition()
+    this.initialBallLocalPosition =
+      this.ballVisual.getTransform().getLocalPosition()
+    this.initialTargetLocalPosition =
+      this.targetAnchor.getTransform().getLocalPosition()
+    this.initialAimLineLocalPosition =
+      this.aimLineAnchor.getTransform().getLocalPosition()
+    this.initialAimLineLocalRotation =
+      this.aimLineAnchor.getTransform().getLocalRotation()
+    this.initialAimHandleLocalPosition =
+      this.aimHandle.getTransform().getLocalPosition()
+    this.initialPlacementHandleLocalPosition =
+      this.placementHandle.getTransform().getLocalPosition()
   }
 
   private formatPosition(position: vec3): string {
