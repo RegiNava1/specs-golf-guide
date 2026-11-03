@@ -24,3 +24,6 @@ Workspaces/**
 .codex/config.toml
 .claude/settings.local.json
 # END Lens Studio managed Agents-Docs block
+
+# Project-local signing credential. Never commit or publish.
+/signing_key.pem
