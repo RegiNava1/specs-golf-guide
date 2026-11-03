@@ -1517,6 +1517,7 @@
       aimHandle: !<reference.SceneObject> a13e073e-2b1f-4965-889b-6300007de69d
       aimDragInteraction: !<MappingBased.AssignableType_3> 15a1943f-3bd6-4ce2-a400-2665b5d9c0b6
       targetAnchor: !<reference.SceneObject> 3970631e-d67c-4795-86c4-ed0ae438c8c3
+      ballVisual: !<reference.SceneObject> 8ea3f769-4e55-4fc4-b1e2-ac5dd9a5f1bb
   ScriptTypes:
     "":
       {}

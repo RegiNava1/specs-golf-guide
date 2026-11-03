@@ -21,6 +21,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
   public readonly onMoveSetup = new Event<void>()
   public readonly onConfirmPlacement = new Event<void>()
   public readonly onAdjustAim = new Event<void>()
+  public readonly onPracticePutt = new Event<void>()
 
   private placementControlsObject!: SceneObject
   private aimControlsObject!: SceneObject
@@ -75,6 +76,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     aimLayout.direction = FlexDirection.Row
     aimLayout.justifyContent = FlexJustify.Center
     aimLayout.alignItems = FlexAlign.Center
+    aimLayout.columnGap = 1.2
 
     const adjustButtonObject = this.createButton(
       this.aimControlsObject,
@@ -84,6 +86,13 @@ export class GolfPlacementUI extends BaseScriptComponent {
       () => this.onAdjustAim.invoke()
     )
     this.adjustButton = adjustButtonObject.getComponent(Button.getTypeName()) as Button
+    this.createButton(
+      this.aimControlsObject,
+      "PracticePutt_Control",
+      "Practice Putt",
+      "Secondary",
+      () => this.onPracticePutt.invoke()
+    )
     this.adjustButton.opacity = 0
     this.adjustButton.onInitialized.add(() => {
       this.aimControlsObject.enabled = false
@@ -112,6 +121,16 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   public showAimMode(): void {
     this.statusContent.text = "Drag the cyan aim handle left or right"
+  }
+
+  public showRolling(): void {
+    this.statusContent.text = "Ball rolling..."
+    this.aimControlsObject.enabled = false
+  }
+
+  public showRollComplete(): void {
+    this.statusContent.text = "Practice putt complete"
+    this.aimControlsObject.enabled = false
   }
 
   private createButton(
