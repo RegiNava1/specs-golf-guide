@@ -573,6 +573,23 @@
     - !<own> a6af4948-9adc-4052-ae22-db902dd2764e
   Components:
     []
+- !<ScriptComponent/15a1943f-3bd6-4ce2-a400-2665b5d9c0b6>
+  PrefabRemaps:
+    []
+  Name: AimDragInteraction
+  Enabled: true
+  ScriptAsset: !<reference> c59fd451-1628-466f-8439-75fb2352f160
+  ScriptInputsDefault:
+    {}
+  ScriptTypesDefault:
+    {}
+  ScriptInputs:
+    "":
+      ballAnchor: !<reference.SceneObject> 862324ec-5e50-4259-bfed-b3f03ba6c09f
+      targetAnchor: !<reference.SceneObject> 3970631e-d67c-4795-86c4-ed0ae438c8c3
+  ScriptTypes:
+    "":
+      {}
 - !<SceneObject/181c239f-175e-4912-94fc-d37a2599b2d6>
   PrefabRemaps:
     []
@@ -1064,6 +1081,7 @@
   Children:
     - !<own> 080e3918-3ea3-48f1-92a9-9e66652de53b
     - !<own> 082246ff-7349-40a0-9cf4-a3dd55ba80f9
+    - !<own> a13e073e-2b1f-4965-889b-6300007de69d
   Components:
     []
 - !<SceneObject/421c3378-3246-429d-bd2f-4ee81f6751a7>
@@ -1146,6 +1164,21 @@
   BlendNormals: false
   BlendShapes:
     {}
+- !<SceneObject/4b231fac-005b-4f29-96f4-2aa82907d74d>
+  PrefabRemaps:
+    []
+  Name: AimHandle_Visual
+  Enabled: true
+  Layers: 1
+  LocalTransform: !<TransformEntity>
+    Position: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Scale: {x: 12.000000, y: 12.000000, z: 12.000000}
+    HasSegmentScaleCompensation: false
+  Children:
+    []
+  Components:
+    - !<own> 654be57e-1873-4f1f-81d0-7ba51bd1b959
 - !<SceneObject/4c195c04-c397-454e-bd08-3485f37d84fe>
   PrefabRemaps:
     []
@@ -1444,6 +1477,26 @@
     - !<own> 80574bd1-697b-4bb5-b9ce-13b340146d82
   Components:
     - !<own> ccf4d3bc-d3c2-4580-b9c5-62f164ef7eef
+- !<RenderMeshVisual/654be57e-1873-4f1f-81d0-7ba51bd1b959>
+  PrefabRemaps:
+    []
+  Name: Render Mesh Visual
+  Enabled: true
+  RenderOrder: 0
+  StretchMode: Stretch
+  VerticalAlignment: Center
+  HorizontalAlignment: Center
+  MeshShadowMode: None
+  ShadowColor: {x: 1.000000, y: 1.000000, z: 1.000000, w: 1.000000}
+  ShadowDensity: 1.000000
+  Materials:
+    - !<reference> d7892b15-63e2-4c6a-95df-7a3307dd15a5
+  Mesh: !<reference> 98e85f2f-6167-466a-9a8e-83cc80fa961a
+  Skin: !<reference> 00000000-0000-0000-0000-000000000000
+  BlendShapesEnabled: true
+  BlendNormals: false
+  BlendShapes:
+    {}
 - !<ScriptComponent/65cde8f5-c959-41b3-84f5-8bb15dbafb87>
   PrefabRemaps:
     []
@@ -1460,6 +1513,10 @@
       placementHandle: !<reference.SceneObject> 3ce4c898-d04d-4ecd-9880-91578ccb0f20
       dragInteraction: !<MappingBased.AssignableType_1> 69f8458d-ab75-4989-97be-f6e5b2cac68b
       placementUI: !<MappingBased.AssignableType_2> 391c4f4a-8421-4ecb-80e7-424b0a742e42
+      aimLineAnchor: !<reference.SceneObject> 41b3c4a4-ba7a-4b31-88f9-179b2333448c
+      aimHandle: !<reference.SceneObject> a13e073e-2b1f-4965-889b-6300007de69d
+      aimDragInteraction: !<MappingBased.AssignableType_3> 15a1943f-3bd6-4ce2-a400-2665b5d9c0b6
+      targetAnchor: !<reference.SceneObject> 3970631e-d67c-4795-86c4-ed0ae438c8c3
   ScriptTypes:
     "":
       {}
@@ -2047,6 +2104,21 @@
   BlendNormals: false
   BlendShapes:
     {}
+- !<SceneObject/a13e073e-2b1f-4965-889b-6300007de69d>
+  PrefabRemaps:
+    []
+  Name: AimHandle_Anchor
+  Enabled: true
+  Layers: 1
+  LocalTransform: !<TransformEntity>
+    Position: {x: 0.000000, y: 6.000000, z: -150.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    HasSegmentScaleCompensation: false
+  Children:
+    - !<own> 4b231fac-005b-4f29-96f4-2aa82907d74d
+  Components:
+    - !<own> 15a1943f-3bd6-4ce2-a400-2665b5d9c0b6
 - !<SceneObject/a408fa94-657a-4637-989b-4f74782bb96d>
   PrefabRemaps:
     []

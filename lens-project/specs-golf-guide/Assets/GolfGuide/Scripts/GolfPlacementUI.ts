@@ -20,9 +20,13 @@ const BUTTON_HEIGHT_CM = 4.2
 export class GolfPlacementUI extends BaseScriptComponent {
   public readonly onMoveSetup = new Event<void>()
   public readonly onConfirmPlacement = new Event<void>()
+  public readonly onAdjustAim = new Event<void>()
 
+  private placementControlsObject!: SceneObject
+  private aimControlsObject!: SceneObject
   private moveButtonObject!: SceneObject
   private confirmButtonObject!: SceneObject
+  private adjustButton!: Button
   private statusContent!: ElementContent
 
   onAwake(): void {
@@ -30,11 +34,13 @@ export class GolfPlacementUI extends BaseScriptComponent {
     const backPlate = this.sceneObject.createComponent(BackPlate.getTypeName()) as BackPlate
     backPlate.size = new vec2(PANEL_WIDTH_CM, PANEL_HEIGHT_CM)
 
-    const content = global.scene.createSceneObject("PlacementControls_Content")
-    content.setParent(this.sceneObject)
-    content.getTransform().setLocalPosition(new vec3(0, 0, 0.6))
+    this.placementControlsObject = global.scene.createSceneObject("PlacementControls_Content")
+    this.placementControlsObject.setParent(this.sceneObject)
+    this.placementControlsObject.getTransform().setLocalPosition(new vec3(0, 0, 0.6))
 
-    const layout = content.createComponent(FlexLayout.getTypeName()) as FlexLayout
+    const layout = this.placementControlsObject.createComponent(
+      FlexLayout.getTypeName()
+    ) as FlexLayout
     layout.width = PANEL_WIDTH_CM - 3
     layout.height = PANEL_HEIGHT_CM - 2
     layout.direction = FlexDirection.Row
@@ -43,19 +49,45 @@ export class GolfPlacementUI extends BaseScriptComponent {
     layout.columnGap = 1.2
 
     this.moveButtonObject = this.createButton(
-      content,
+      this.placementControlsObject,
       "MoveSetup_Control",
       "Move Setup",
       "Primary",
       () => this.onMoveSetup.invoke()
     )
     this.confirmButtonObject = this.createButton(
-      content,
+      this.placementControlsObject,
       "ConfirmPlacement_Control",
       "Confirm Placement",
       "Secondary",
       () => this.onConfirmPlacement.invoke()
     )
+
+    this.aimControlsObject = global.scene.createSceneObject("AimControls_Content")
+    this.aimControlsObject.setParent(this.sceneObject)
+    this.aimControlsObject.getTransform().setLocalPosition(new vec3(0, 0, 0.7))
+
+    const aimLayout = this.aimControlsObject.createComponent(
+      FlexLayout.getTypeName()
+    ) as FlexLayout
+    aimLayout.width = PANEL_WIDTH_CM - 3
+    aimLayout.height = PANEL_HEIGHT_CM - 2
+    aimLayout.direction = FlexDirection.Row
+    aimLayout.justifyContent = FlexJustify.Center
+    aimLayout.alignItems = FlexAlign.Center
+
+    const adjustButtonObject = this.createButton(
+      this.aimControlsObject,
+      "AdjustAim_Control",
+      "Adjust Aim",
+      "Primary",
+      () => this.onAdjustAim.invoke()
+    )
+    this.adjustButton = adjustButtonObject.getComponent(Button.getTypeName()) as Button
+    this.adjustButton.opacity = 0
+    this.adjustButton.onInitialized.add(() => {
+      this.aimControlsObject.enabled = false
+    })
 
     const statusObject = global.scene.createSceneObject("PlacementStatus")
     statusObject.setParent(this.sceneObject)
@@ -72,9 +104,14 @@ export class GolfPlacementUI extends BaseScriptComponent {
   }
 
   public showConfirmed(): void {
-    this.statusContent.text = "Placement confirmed"
-    this.moveButtonObject.enabled = false
-    this.confirmButtonObject.enabled = false
+    this.statusContent.text = "Placement confirmed - select Adjust Aim"
+    this.placementControlsObject.enabled = false
+    this.adjustButton.opacity = 1
+    this.aimControlsObject.enabled = true
+  }
+
+  public showAimMode(): void {
+    this.statusContent.text = "Drag the cyan aim handle left or right"
   }
 
   private createButton(

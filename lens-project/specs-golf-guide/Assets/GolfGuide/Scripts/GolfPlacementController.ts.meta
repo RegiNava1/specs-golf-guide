@@ -28,10 +28,14 @@
   ExportUid: 00000000-0000-0000-0000-000000000000
   PackagePolicy: CanBeUnpacked
   ScriptInputsHidden:
+    aimDragInteraction: false
+    aimHandle: false
+    aimLineAnchor: false
     dragInteraction: false
     placementHandle: false
     placementUI: false
     puttingSetupRoot: false
+    targetAnchor: false
   ScriptTypesHidden:
     {}
   ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
@@ -45,6 +49,10 @@
       placementHandle: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
       dragInteraction: !<MappingBased.AssignableType_1> 00000000-0000-0000-0000-000000000000
       placementUI: !<MappingBased.AssignableType_2> 00000000-0000-0000-0000-000000000000
+      aimLineAnchor: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      aimHandle: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      aimDragInteraction: !<MappingBased.AssignableType_3> 00000000-0000-0000-0000-000000000000
+      targetAnchor: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
   ScriptTypes:
     -
       {}
@@ -53,3 +61,7 @@
     - // @input SceneObject placementHandle
     - // @input AssignableType_1 dragInteraction
     - // @input AssignableType_2 placementUI
+    - // @input SceneObject aimLineAnchor
+    - // @input SceneObject aimHandle
+    - // @input AssignableType_3 aimDragInteraction
+    - // @input SceneObject targetAnchor
