@@ -1,0 +1,55 @@
+- !<AssetImportMetadata/1e052af9-4cc4-4f81-b2b7-90e156e985df>
+  ImportedAssetIds:
+    TypeScriptAsset: !<reference> 4cc70c9e-2b32-4468-9d79-2cc16991b045
+  ImporterName: TypeScriptAssetImporter
+  PrimaryAsset: !<reference> 4cc70c9e-2b32-4468-9d79-2cc16991b045
+  PackageType: NotAPackage
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
+  AssetDataMap:
+    TypeScriptAsset: !<own> 410fa2ce-3498-4d6c-9847-fb57ece7b0be
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
+  CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
+- !<TypeScriptAssetData/410fa2ce-3498-4d6c-9847-fb57ece7b0be>
+  SvgIcon: ""
+  SetupScript:
+    code: ""
+  Description: ""
+  VersionMajor: 0
+  VersionMinor: 0
+  VersionPatch: 0
+  VersionPrerelease: ""
+  UpdateOrder: 0
+  ComponentUid: 617b103f-6fd7-46e7-8c60-df66a923181b
+  ExportUid: 00000000-0000-0000-0000-000000000000
+  PackagePolicy: CanBeUnpacked
+  ScriptInputsHidden:
+    dragInteraction: false
+    placementHandle: false
+    placementUI: false
+    puttingSetupRoot: false
+  ScriptTypesHidden:
+    {}
+  ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
+  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+  Tags:
+    []
+  Attachments:
+    []
+  DefaultScriptInputs:
+    - puttingSetupRoot: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      placementHandle: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      dragInteraction: !<MappingBased.AssignableType_1> 00000000-0000-0000-0000-000000000000
+      placementUI: !<MappingBased.AssignableType_2> 00000000-0000-0000-0000-000000000000
+  ScriptTypes:
+    -
+      {}
+  InputLines:
+    - // @input SceneObject puttingSetupRoot
+    - // @input SceneObject placementHandle
+    - // @input AssignableType_1 dragInteraction
+    - // @input AssignableType_2 placementUI

@@ -1,0 +1,46 @@
+- !<AssetImportMetadata/4a3e2593-5835-4c3e-90e0-643db86b592e>
+  ImportedAssetIds:
+    TypeScriptAsset: !<reference> 5832e035-b8cb-43aa-bdbc-341df677aa90
+  ImporterName: TypeScriptAssetImporter
+  PrimaryAsset: !<reference> 5832e035-b8cb-43aa-bdbc-341df677aa90
+  PackageType: NotAPackage
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
+  AssetDataMap:
+    TypeScriptAsset: !<own> 19fe77f9-250d-4dd3-899c-1be68cffc6d9
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
+  CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
+- !<TypeScriptAssetData/19fe77f9-250d-4dd3-899c-1be68cffc6d9>
+  SvgIcon: ""
+  SetupScript:
+    code: ""
+  Description: ""
+  VersionMajor: 0
+  VersionMinor: 0
+  VersionPatch: 0
+  VersionPrerelease: ""
+  UpdateOrder: 0
+  ComponentUid: accd1241-1fec-4bd0-bc25-ec33970b85cb
+  ExportUid: 00000000-0000-0000-0000-000000000000
+  PackagePolicy: CanBeUnpacked
+  ScriptInputsHidden:
+    manipulateRoot: false
+  ScriptTypesHidden:
+    {}
+  ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
+  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+  Tags:
+    []
+  Attachments:
+    []
+  DefaultScriptInputs:
+    - manipulateRoot: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+  ScriptTypes:
+    -
+      {}
+  InputLines:
+    - // @input SceneObject manipulateRoot

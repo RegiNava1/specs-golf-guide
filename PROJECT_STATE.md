@@ -104,3 +104,13 @@ Status: Official planning brief approved; standalone deterministic putting engin
 - No Lens Studio import, material/scene construction, SIK, Interactive Preview or LEAF tests performed. The generated visual concept sheet is illustrative only and was not committed as dimensional evidence.
 - Progress unchanged at overall 60%, logic/preparation 97%, Lens implementation 5% (provisional). Canonical Lens project and account configuration untouched; no paid services or publication.
 - Next: officially supported CLAD editor readiness, native geometry/material construction and real Preview/LEAF validation of the reference package. No additional offline speculative infrastructure recommended.
+
+## Batch 11 — Move Setup and Confirm Placement (2026-11-02)
+- Target: private `RegiNava1/specs-golf-guide` `main`, verified local/remote base `cea1bd79459c6c04efa955a6871063a998719883`.
+- Added a SIK-backed 12 cm floor placement handle, a SpectaclesUIKit placement panel, and a Lens adapter for the tested `ACTIVATE_MOVE_SETUP`, `MOVE_PLACEMENT_HANDLE`, and `CONFIRM_PLACEMENT` transitions.
+- The complete `PuttingSetup_Root` translates on the simulated floor, so the existing 150 cm ball-to-target spacing and child geometry remain unchanged. Confirm Placement disables interaction and hides the handle and placement controls.
+- Validation: the existing Node suite passed 38 tests with 0 failures. Lens Studio TypeScript compilation succeeded, post-reset runtime logs contained no errors, and SPECS 27 Plane Interactive Preview successfully moved the setup by non-zero floor offsets and transitioned to `aiming` with visible `Placement confirmed` feedback.
+- Acceptance criterion 1 is now validated in Interactive Preview for initial placement, real mouse drag through SIK, whole-setup movement, and confirmation. LEAF was not installed or executed because the project has no Leaf package and this batch prohibited package modification.
+- Safety: no CaptureRuntimeViewTool, AiPreviewAgentInspect, helper-package injection, package installation/removal, authentication change, publishing, or unrelated-repository access. The sign-in-generated `.esproj` package metadata change remains outside the focused Batch 11 commit.
+- Progress estimate after validated interaction: overall 72%, core logic/preparation 97%, validated Lens implementation 35%.
+- Next bounded batch: connect adjustable aim to the existing interaction/reducer contract and validate target-fixed aiming in SPECS 27 Preview; keep rolling, feedback, retry/reset, and visual polish out of that batch.
