@@ -55,7 +55,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
   private quickMenuRoot: SceneObject | null = null
   private quickMenuContent: SceneObject | null = null
   private quickButtons: Button[] = []
-  private quickButtonContents: ElementContent[] = []
+  private quickButtonLabels: Text[] = []
   private quickActions: QuickAction[] = []
   private cameraTransform: Transform | null = null
   private menuPhase: MenuPhase = "placement"
@@ -311,29 +311,39 @@ export class GolfPlacementUI extends BaseScriptComponent {
     object.setParent(parent)
 
     const button = object.createComponent(Button.getTypeName()) as Button
+    button.size = new vec3(
+      QUICK_BUTTON_WIDTH_CM,
+      QUICK_BUTTON_HEIGHT_CM,
+      1
+    )
     button.setVariant({
       theme: "SnapOS3",
       shape: "Rectangle",
       style: index === 0 ? "Primary" : "Secondary",
     })
-    button.onInitialized.add(() => {
-      button.size = new vec3(
-        QUICK_BUTTON_WIDTH_CM,
-        QUICK_BUTTON_HEIGHT_CM,
-        1
-      )
-    })
     button.onTriggerUp.add(() => this.triggerQuickAction(index))
 
-    const content = object.createComponent(
-      ElementContent.getTypeName()
-    ) as ElementContent
-    content.text = ""
-    content.textSize = 12
-    content.autoResize = true
+    const labelObject = global.scene.createSceneObject(`${name}_Label`)
+    labelObject.setParent(object)
+    labelObject.getTransform().setLocalPosition(new vec3(0, 0, 0.08))
+    const label = labelObject.createComponent("Component.Text") as Text
+    label.text = ""
+    label.size = 24
+    label.weight = 500
+    label.depthTest = true
+    label.horizontalAlignment = HorizontalAlignment.Center
+    label.verticalAlignment = VerticalAlignment.Center
+    label.horizontalOverflow = HorizontalOverflow.Overflow
+    label.verticalOverflow = VerticalOverflow.Overflow
+    label.layoutRect = Rect.create(
+      -(QUICK_BUTTON_WIDTH_CM - 0.5) / 2,
+      (QUICK_BUTTON_WIDTH_CM - 0.5) / 2,
+      -1.2,
+      1.2
+    )
 
     this.quickButtons.push(button)
-    this.quickButtonContents.push(content)
+    this.quickButtonLabels.push(label)
     return object.createComponent(FlexItem.getTypeName()) as FlexItem
   }
 
@@ -361,9 +371,9 @@ export class GolfPlacementUI extends BaseScriptComponent {
       return
     }
 
-    for (let index = 0; index < this.quickButtonContents.length; index += 1) {
+    for (let index = 0; index < this.quickButtonLabels.length; index += 1) {
       const action = this.quickActions[index]
-      this.quickButtonContents[index].text = action?.label ?? ""
+      this.quickButtonLabels[index].text = action?.label ?? ""
       this.quickButtons[index].getSceneObject().enabled = action !== undefined
     }
   }
