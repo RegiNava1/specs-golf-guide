@@ -14,6 +14,13 @@ const PANEL_WIDTH_CM = 40
 const PANEL_HEIGHT_CM = 8
 const BUTTON_WIDTH_CM = 17
 const BUTTON_HEIGHT_CM = 4.2
+const FULL_BUTTON_LABEL_SIZE = 34
+const FULL_BUTTON_LABEL_WEIGHT = 600
+const STATUS_TEXT_SIZE = 68
+const STATUS_TEXT_WEIGHT = 600
+const STATUS_PANEL_WIDTH_CM = 38
+const STATUS_PANEL_HEIGHT_CM = 5.2
+const STATUS_PANEL_Y_CM = -7
 const QUICK_MENU_WIDTH_CM = 15.5
 const QUICK_MENU_HEIGHT_CM = 6.2
 const QUICK_BUTTON_WIDTH_CM = 6
@@ -51,7 +58,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
   private confirmButtonObject!: SceneObject
   private adjustButton!: Button
   private resultRevealButton!: Button
-  private statusContent!: ElementContent
+  private statusText!: Text
   private quickMenuRoot: SceneObject | null = null
   private quickMenuContent: SceneObject | null = null
   private quickButtons: Button[] = []
@@ -169,14 +176,29 @@ export class GolfPlacementUI extends BaseScriptComponent {
       this.resultControlsObject.enabled = false
     })
 
+    const statusPanelObject = global.scene.createSceneObject("PlacementStatus_Panel")
+    statusPanelObject.setParent(this.sceneObject)
+    statusPanelObject.getTransform().setLocalPosition(new vec3(0, STATUS_PANEL_Y_CM, 0.1))
+    const statusBackPlate = statusPanelObject.createComponent(
+      BackPlate.getTypeName()
+    ) as BackPlate
+    statusBackPlate.size = new vec2(STATUS_PANEL_WIDTH_CM, STATUS_PANEL_HEIGHT_CM)
+    statusBackPlate.style = "dark"
+
     const statusObject = global.scene.createSceneObject("PlacementStatus")
-    statusObject.setParent(this.sceneObject)
-    statusObject.getTransform().setLocalPosition(new vec3(0, -5.5, 0.7))
-    this.statusContent = statusObject.createComponent(ElementContent.getTypeName()) as ElementContent
-    this.statusContent.text = "Select Move Setup, then drag the cyan handle"
-    this.statusContent.textSize = 34
-    this.statusContent.contentAlignment = "center"
-    this.statusContent.sizeOverride = new vec2(34, 3)
+    statusObject.setParent(statusPanelObject)
+    statusObject.getTransform().setLocalPosition(new vec3(0, 0, 0.6))
+    this.statusText = statusObject.createComponent("Component.Text") as Text
+    this.statusText.text = "Select Move Setup, then drag the cyan handle"
+    this.statusText.size = STATUS_TEXT_SIZE
+    ;(this.statusText as Text & {weight?: number}).weight = STATUS_TEXT_WEIGHT
+    this.statusText.depthTest = true
+    this.statusText.textFill.color = new vec4(1, 1, 1, 1)
+    this.statusText.horizontalAlignment = HorizontalAlignment.Center
+    this.statusText.verticalAlignment = VerticalAlignment.Center
+    this.statusText.horizontalOverflow = HorizontalOverflow.Shrink
+    this.statusText.verticalOverflow = VerticalOverflow.Overflow
+    this.statusText.layoutRect = Rect.create(-18, 18, -2.1, 2.1)
 
     this.createAdaptiveQuickMenu()
     this.createEvent("UpdateEvent").bind(() => this.updateAdaptiveQuickMenu())
@@ -184,13 +206,13 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   public showMoveMode(): void {
     this.menuPhase = "placement"
-    this.statusContent.text = "Drag the cyan handle, then confirm placement"
+    this.statusText.text = "Drag the cyan handle, then confirm placement"
     this.refreshQuickActions()
   }
 
   public showConfirmed(): void {
     this.menuPhase = "aiming"
-    this.statusContent.text = "Placement confirmed - select Adjust Aim"
+    this.statusText.text = "Placement confirmed - select Adjust Aim"
     this.placementControlsObject.enabled = false
     this.adjustButton.opacity = 1
     this.aimControlsObject.enabled = true
@@ -199,13 +221,13 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   public showAimMode(): void {
     this.menuPhase = "aiming"
-    this.statusContent.text = "Drag the cyan aim handle left or right"
+    this.statusText.text = "Drag the cyan aim handle left or right"
     this.refreshQuickActions()
   }
 
   public showRolling(): void {
     this.menuPhase = "rolling"
-    this.statusContent.text = "Ball rolling..."
+    this.statusText.text = "Ball rolling..."
     this.aimControlsObject.enabled = false
     this.resultControlsObject.enabled = false
     this.refreshQuickActions()
@@ -214,7 +236,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   public showRollComplete(): void {
     this.menuPhase = "result"
-    this.statusContent.text = "Practice putt complete"
+    this.statusText.text = "Practice putt complete"
     this.aimControlsObject.enabled = false
     this.resultRevealButton.opacity = 1
     this.resultControlsObject.enabled = true
@@ -223,7 +245,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   public showRetryReady(): void {
     this.menuPhase = "aiming"
-    this.statusContent.text = "Aim preserved - adjust or putt again"
+    this.statusText.text = "Aim preserved - adjust or putt again"
     this.placementControlsObject.enabled = false
     this.resultControlsObject.enabled = false
     this.adjustButton.opacity = 1
@@ -233,7 +255,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   public showInitialPlacement(): void {
     this.menuPhase = "placement"
-    this.statusContent.text = "Select Move Setup, then drag the cyan handle"
+    this.statusText.text = "Select Move Setup, then drag the cyan handle"
     this.resultControlsObject.enabled = false
     this.aimControlsObject.enabled = false
     this.placementControlsObject.enabled = true
@@ -550,10 +572,25 @@ export class GolfPlacementUI extends BaseScriptComponent {
     })
     button.onTriggerUp.add(onTrigger)
 
-    const content = object.createComponent(ElementContent.getTypeName()) as ElementContent
-    content.text = label
-    content.textSize = 18
-    content.autoResize = true
+    const labelObject = global.scene.createSceneObject(`${name}_Label`)
+    labelObject.setParent(object)
+    labelObject.getTransform().setLocalPosition(new vec3(0, 0, 0.08))
+    const labelText = labelObject.createComponent("Component.Text") as Text
+    labelText.text = label
+    labelText.size = FULL_BUTTON_LABEL_SIZE
+    ;(labelText as Text & {weight?: number}).weight = FULL_BUTTON_LABEL_WEIGHT
+    labelText.depthTest = true
+    labelText.textFill.color = new vec4(1, 1, 1, 1)
+    labelText.horizontalAlignment = HorizontalAlignment.Center
+    labelText.verticalAlignment = VerticalAlignment.Center
+    labelText.horizontalOverflow = HorizontalOverflow.Shrink
+    labelText.verticalOverflow = VerticalOverflow.Overflow
+    labelText.layoutRect = Rect.create(
+      -(BUTTON_WIDTH_CM - 1) / 2,
+      (BUTTON_WIDTH_CM - 1) / 2,
+      -1.8,
+      1.8
+    )
     object.createComponent(FlexItem.getTypeName())
     return object
   }
