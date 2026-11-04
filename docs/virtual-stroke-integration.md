@@ -79,11 +79,21 @@ drill. It must remain visually separate from the stroke handle, must never
 choose the stroke direction for the player, and must not replace the direct
 back-and-forward mouse/pinch interaction.
 
-## Batch 27 recommendation
+## Batch 27 Lens integration
 
-Prototype a separate Lens-side bridge in an isolated development scene or
-prefab. It should project the already proven SIK mouse/pinch handle onto the
-floor logic plane and call this adapter without altering the completed
-submission controls. Do not connect it to the completed submission scene until
-Preview regression evidence shows that all five existing criteria remain
-intact.
+The canonical scene now contains `StrokeHandle_Anchor` and
+`StrokeHandle_Visual`. `VirtualStrokeInteraction.ts` uses the existing SIK
+mouse/pinch path to project the handle ray onto the authored ball-floor plane,
+then delegates all transient gesture validation and calculations to the pure
+adapter and stroke model.
+
+- The handle is enabled only while the session is aiming. It resets on retry
+  and is hidden during rolling, results, initial placement, and reset.
+- A valid gesture emits one world-space endpoint, direction, and deterministic
+  strength. The controller reuses the existing 1.5-second roll, outcome
+  classifier, feedback, retry, and reset paths.
+- The existing `Practice Putt` control remains an unchanged fixed-distance
+  fallback.
+- SPECS 27 Preview verified weak, strong, left, right, and rejected incomplete
+  strokes, plus stationary-target, placement, aiming, retry/reset, full-panel,
+  and compact-menu regressions. This is native Preview evidence, not LEAF.

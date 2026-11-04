@@ -6,12 +6,17 @@ import {
 import {GolfOutcomeFeedbackUI} from "./GolfOutcomeFeedbackUI"
 import {GolfPlacementUI} from "./GolfPlacementUI"
 import {PlacementDragInteraction} from "./PlacementDragInteraction"
+import {
+  VirtualStrokeInteraction,
+  type VirtualStrokeCapture,
+} from "./VirtualStrokeInteraction"
 type PlacementPhase =
   | "initial-placement"
   | "moving-setup"
   | "aiming"
   | "rolling"
   | "result"
+type RollSource = "practice-putt" | "virtual-stroke"
 const PUTT_TRAVEL_DISTANCE_CM = 150
 const PUTT_ROLL_DURATION_SECONDS = 1.5
 /**
@@ -42,6 +47,12 @@ export class GolfPlacementController extends BaseScriptComponent {
   @input
   @hint("Target-adjacent UIKit result shown after the roll completes")
   outcomeFeedback!: GolfOutcomeFeedbackUI
+  @input
+  @hint("SIK-compatible virtual-stroke handle shown during the aiming phase")
+  strokeHandle!: SceneObject
+  @input
+  @hint("Transient virtual-stroke input bridge attached to the stroke handle")
+  strokeInteraction!: VirtualStrokeInteraction
   private phase: PlacementPhase = "initial-placement"
   private aimAdjustmentActive = false
   private aimDirection = new vec3(0, 0, -1)
@@ -52,6 +63,8 @@ export class GolfPlacementController extends BaseScriptComponent {
   private rollElapsedSeconds = 0
   private midpointLogged = false
   private rollCompletionDispatched = false
+  private rollSource: RollSource = "practice-putt"
+  private rollStrength = 1
   private initialSetupLocalPosition = vec3.zero()
   private initialBallLocalPosition = vec3.zero()
   private initialTargetLocalPosition = vec3.zero()
@@ -59,13 +72,17 @@ export class GolfPlacementController extends BaseScriptComponent {
   private initialAimLineLocalRotation = quat.quatIdentity()
   private initialAimHandleLocalPosition = vec3.zero()
   private initialPlacementHandleLocalPosition = vec3.zero()
+  private initialStrokeHandleLocalPosition = vec3.zero()
   onAwake(): void {
     this.createEvent("UpdateEvent").bind(() => this.updateRoll())
     this.createEvent("OnStartEvent").bind(() => {
       this.dragInteraction.setInteractionEnabled(false)
       this.aimDragInteraction.setInteractionEnabled(false)
+      this.strokeInteraction.setInteractionEnabled(false)
+      this.strokeInteraction.setAimDirection(this.aimDirection)
       this.placementHandle.enabled = true
       this.aimHandle.enabled = false
+      this.strokeHandle.enabled = false
       this.captureInitialArrangement()
       this.outcomeFeedback.hide()
       this.placementUI.onMoveSetup.add(() => this.activateMoveSetup())
@@ -76,6 +93,9 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.placementUI.onResetSetup.add(() => this.resetSetup())
       this.dragInteraction.onDragUpdate.add((position) => this.handlePlacementUpdate(position))
       this.aimDragInteraction.onDragUpdate.add((direction) => this.handleAimUpdate(direction))
+      this.strokeInteraction.onStrokeCaptured.add((capture) =>
+        this.handleVirtualStroke(capture)
+      )
       print("[GolfPlacement] ready: initial-placement")
     })
   }
@@ -117,6 +137,10 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.aimDragInteraction.setInteractionEnabled(false)
     this.placementHandle.enabled = false
     this.aimHandle.enabled = false
+    this.strokeHandle.enabled = true
+    this.strokeInteraction.resetInput()
+    this.strokeInteraction.setAimDirection(this.aimDirection)
+    this.strokeInteraction.setInteractionEnabled(true)
     this.placementUI.showConfirmed()
 
     const position = this.puttingSetupRoot.getTransform().getLocalPosition()
@@ -155,6 +179,7 @@ export class GolfPlacementController extends BaseScriptComponent {
     }
 
     this.aimDirection = planar.normalize()
+    this.strokeInteraction.setAimDirection(this.aimDirection)
     const yaw = Math.atan2(-this.aimDirection.x, -this.aimDirection.z)
     this.aimLineAnchor
       .getTransform()
@@ -182,12 +207,53 @@ export class GolfPlacementController extends BaseScriptComponent {
     }
 
     const direction = planar.normalize()
+    const startPosition = this.ballVisual.getTransform().getWorldPosition()
+    const endpoint = new vec3(
+      startPosition.x + direction.x * PUTT_TRAVEL_DISTANCE_CM,
+      startPosition.y,
+      startPosition.z + direction.z * PUTT_TRAVEL_DISTANCE_CM
+    )
+    this.beginRoll(endpoint, direction, "practice-putt", 1)
+  }
+
+  private handleVirtualStroke(capture: VirtualStrokeCapture): void {
+    if (this.phase !== "aiming" || this.rollCompletionDispatched) {
+      return
+    }
+
+    this.beginRoll(
+      capture.endpoint,
+      capture.direction,
+      "virtual-stroke",
+      capture.strength
+    )
+  }
+
+  private beginRoll(
+    endpoint: vec3,
+    direction: vec3,
+    source: RollSource,
+    strength: number
+  ): void {
+    if (
+      this.phase !== "aiming" ||
+      this.rollCompletionDispatched ||
+      !Number.isFinite(endpoint.x) ||
+      !Number.isFinite(endpoint.z) ||
+      !Number.isFinite(strength) ||
+      strength < 0
+    ) {
+      return
+    }
+
     this.rollStartPosition = this.ballVisual.getTransform().getWorldPosition()
     this.rollEndPosition = new vec3(
-      this.rollStartPosition.x + direction.x * PUTT_TRAVEL_DISTANCE_CM,
+      endpoint.x,
       this.rollStartPosition.y,
-      this.rollStartPosition.z + direction.z * PUTT_TRAVEL_DISTANCE_CM
+      endpoint.z
     )
+    this.rollSource = source
+    this.rollStrength = strength
     this.targetPositionAtRollStart = this.targetAnchor.getTransform().getWorldPosition()
     this.rollElapsedSeconds = 0
     this.midpointLogged = false
@@ -195,12 +261,14 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.phase = "rolling"
     this.aimAdjustmentActive = false
     this.aimDragInteraction.setInteractionEnabled(false)
+    this.strokeInteraction.setInteractionEnabled(false)
     this.aimHandle.enabled = false
+    this.strokeHandle.enabled = false
     this.outcomeFeedback.hide()
     this.placementUI.showRolling()
 
     console.log(
-      `[GolfPutt] action=PRACTICE_PUTT phase=rolling duration=${PUTT_ROLL_DURATION_SECONDS.toFixed(2)} distance=${PUTT_TRAVEL_DISTANCE_CM.toFixed(2)} start=${this.formatPosition(this.rollStartPosition)} endpoint=${this.formatPosition(this.rollEndPosition)} direction=(${direction.x.toFixed(4)},${direction.z.toFixed(4)})`
+      `[GolfPutt] action=${source === "virtual-stroke" ? "VIRTUAL_STROKE" : "PRACTICE_PUTT"} phase=rolling source=${source} duration=${PUTT_ROLL_DURATION_SECONDS.toFixed(2)} distance=${this.rollStartPosition.distance(this.rollEndPosition).toFixed(2)} strength=${strength.toFixed(3)} start=${this.formatPosition(this.rollStartPosition)} endpoint=${this.formatPosition(this.rollEndPosition)} direction=(${direction.x.toFixed(4)},${direction.z.toFixed(4)})`
     )
   }
 
@@ -248,7 +316,7 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.outcomeFeedback.showOutcome(outcome.classification)
     const targetStable = targetPosition.distance(this.targetPositionAtRollStart) < 0.001
     console.log(
-      `[GolfPutt] action=COMPLETE_ROLL phase=result outcome=${outcome.classification} endpointErrorCm=${outcome.distanceFromTargetCm.toFixed(2)} targetZoneDiameterCm=${PRACTICE_TARGET_ZONE_DIAMETER_CM.toFixed(2)} elapsed=${this.rollElapsedSeconds.toFixed(3)} position=${this.formatPosition(this.rollEndPosition)} targetStable=${targetStable}`
+      `[GolfPutt] action=COMPLETE_ROLL phase=result source=${this.rollSource} strength=${this.rollStrength.toFixed(3)} outcome=${outcome.classification} endpointErrorCm=${outcome.distanceFromTargetCm.toFixed(2)} targetZoneDiameterCm=${PRACTICE_TARGET_ZONE_DIAMETER_CM.toFixed(2)} elapsed=${this.rollElapsedSeconds.toFixed(3)} position=${this.formatPosition(this.rollEndPosition)} targetStable=${targetStable}`
     )
   }
 
@@ -265,8 +333,12 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.rollCompletionDispatched = false
     this.dragInteraction.setInteractionEnabled(false)
     this.aimDragInteraction.setInteractionEnabled(false)
+    this.strokeInteraction.resetInput()
+    this.strokeInteraction.setAimDirection(this.aimDirection)
+    this.strokeInteraction.setInteractionEnabled(true)
     this.placementHandle.enabled = false
     this.aimHandle.enabled = false
+    this.strokeHandle.enabled = true
     this.outcomeFeedback.hide()
     this.placementUI.showRetryReady()
 
@@ -304,6 +376,9 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.placementHandle
       .getTransform()
       .setLocalPosition(this.initialPlacementHandleLocalPosition)
+    this.strokeHandle
+      .getTransform()
+      .setLocalPosition(this.initialStrokeHandleLocalPosition)
 
     this.phase = "initial-placement"
     this.aimAdjustmentActive = false
@@ -313,10 +388,15 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.rollElapsedSeconds = 0
     this.midpointLogged = false
     this.rollCompletionDispatched = false
+    this.rollSource = "practice-putt"
+    this.rollStrength = 1
     this.dragInteraction.setInteractionEnabled(false)
     this.aimDragInteraction.setInteractionEnabled(false)
+    this.strokeInteraction.setInteractionEnabled(false)
+    this.strokeInteraction.setAimDirection(this.aimDirection)
     this.placementHandle.enabled = true
     this.aimHandle.enabled = false
+    this.strokeHandle.enabled = false
     this.outcomeFeedback.hide()
     this.placementUI.showInitialPlacement()
 
@@ -346,6 +426,8 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.aimHandle.getTransform().getLocalPosition()
     this.initialPlacementHandleLocalPosition =
       this.placementHandle.getTransform().getLocalPosition()
+    this.initialStrokeHandleLocalPosition =
+      this.strokeHandle.getTransform().getLocalPosition()
   }
 
   private formatPosition(position: vec3): string {

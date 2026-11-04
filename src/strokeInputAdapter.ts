@@ -238,6 +238,26 @@ export class VirtualStrokeInputAdapter {
     return true;
   }
 
+  canStartForwardStroke(point: Vector2): boolean {
+    if (
+      this.currentPhase !== "backswing" ||
+      !isFiniteVector(point) ||
+      this.farthestBackswingPoint === null
+    ) {
+      return false;
+    }
+
+    const backswingProjection = this.projectionFromBall(this.farthestBackswingPoint);
+    const forwardProgress = dot(
+      subtract(point, this.farthestBackswingPoint),
+      this.strokeModel.selectedAimDirection,
+    );
+    return (
+      backswingProjection <= -this.config.minimumBackswingCm &&
+      forwardProgress >= this.config.minimumForwardProgressCm
+    );
+  }
+
   trackForwardStroke(point: Vector2): boolean {
     if (this.currentPhase !== "forward-stroke") {
       return false;

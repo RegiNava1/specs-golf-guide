@@ -37,6 +37,8 @@
     placementHandle: false
     placementUI: false
     puttingSetupRoot: false
+    strokeHandle: false
+    strokeInteraction: false
     targetAnchor: false
   ScriptTypesHidden:
     {}
@@ -57,6 +59,8 @@
       targetAnchor: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
       ballVisual: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
       outcomeFeedback: !<MappingBased.AssignableType_4> 00000000-0000-0000-0000-000000000000
+      strokeHandle: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      strokeInteraction: !<MappingBased.AssignableType_5> 00000000-0000-0000-0000-000000000000
   ScriptTypes:
     -
       {}
@@ -71,3 +75,5 @@
     - // @input SceneObject targetAnchor
     - '// @input SceneObject ballVisual {"hint":"The existing golf-ball visual moved during the deterministic putt roll"}'
     - '// @input AssignableType_4 outcomeFeedback {"hint":"Target-adjacent UIKit result shown after the roll completes"}'
+    - '// @input SceneObject strokeHandle {"hint":"SIK-compatible virtual-stroke handle shown during the aiming phase"}'
+    - '// @input AssignableType_5 strokeInteraction {"hint":"Transient virtual-stroke input bridge attached to the stroke handle"}'

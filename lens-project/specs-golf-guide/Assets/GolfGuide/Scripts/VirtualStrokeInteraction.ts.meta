@@ -1,0 +1,53 @@
+- !<AssetImportMetadata/e89ec619-fc5d-468a-be47-e3ec8cd6520c>
+  ImportedAssetIds:
+    TypeScriptAsset: !<reference> 7d3fdf11-a8ab-457a-95c2-4bb81a047138
+  ImporterName: TypeScriptAssetImporter
+  PrimaryAsset: !<reference> 7d3fdf11-a8ab-457a-95c2-4bb81a047138
+  PackageType: NotAPackage
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
+  AssetDataMap:
+    TypeScriptAsset: !<own> 1cdaa18e-9df0-4e70-bd92-ce6d7c261bf6
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
+  CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
+- !<TypeScriptAssetData/1cdaa18e-9df0-4e70-bd92-ce6d7c261bf6>
+  SvgIcon: ""
+  SetupScript:
+    code: ""
+  Description: ""
+  VersionMajor: 0
+  VersionMinor: 0
+  VersionPatch: 0
+  VersionPrerelease: ""
+  UpdateOrder: 0
+  ComponentUid: c97eb443-2699-4408-b680-5938893d9234
+  ExportUid: 00000000-0000-0000-0000-000000000000
+  PackagePolicy: CanBeUnpacked
+  ScriptInputsHidden:
+    ballAnchor: false
+    targetAnchor: false
+  ScriptTypesHidden:
+    {}
+  ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
+  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+  Tags:
+    []
+  Attachments:
+    []
+  DefaultScriptInputs:
+    - ballAnchor: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      targetAnchor: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+  ScriptTypes:
+    -
+      {}
+  InputLines:
+    - '// @ui {"widget":"label", "label":"<span style=\"color: #60A5FA;\">VirtualStrokeInteraction – deterministic floor stroke</span>"}'
+    - '// @ui {"widget":"separator"}'
+    - '// @ui {"widget":"group_start", "label":"References"}'
+    - '// @input SceneObject ballAnchor {"hint":"Floor anchor for the golf ball"}'
+    - '// @input SceneObject targetAnchor {"hint":"Stationary practice-target anchor"}'
+    - '// @ui {"widget":"group_end"}'

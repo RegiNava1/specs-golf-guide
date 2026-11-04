@@ -244,3 +244,12 @@ Status: Official planning brief approved; standalone deterministic putting engin
 - Lens boundary: the canonical Lens Studio project, completed five-workflow implementation, scenes, scripts, packages, materials and publishing settings were not modified or opened. No Lens Studio MCP or Preview operation was used.
 - Safety / cost: no CaptureRuntimeViewTool, AiPreviewAgentInspect, package change, dependency, paid service, publishing, deployment, merge to `main`, or unrelated-repository access.
 - Recommended Batch 27: in a separate isolated development scene or prefab, bridge an existing SIK floor-projected mouse/pinch handle to this adapter, then prove Preview interaction and all five submission-workflow regressions before considering integration.
+
+## Batch 27 — Virtual stroke integration on main (2026-11-04)
+- Target: private `RegiNava1/specs-golf-guide` `main`, starting from verified baseline `e60fd657f8b945d562ee28d725f76d2fe5d7c52e`. A complete external project backup and immutable local recovery tag were created before integration.
+- Reconciled only the two validated feature commits into `main`; no full branch merge or stale Lens/UI file replacement was performed.
+- Added a SIK-backed floor stroke handle to the canonical scene. Actual forward-path direction and backswing-to-impact displacement drive the pure deterministic model; invalid and duplicate impacts are rejected. The existing fixed 150 cm `Practice Putt` remains available.
+- SPECS 27 Preview verified a 0.406-strength short stroke, 1.574/1.649/1.746 strong and directional strokes, deliberate left/right paths, incomplete-stroke rejection with no ball movement, stationary target, Try Again, Reset Setup, non-zero placement, aim adjustment, and full/compact controls. All valid rolls retained the fixed 1.5-second animation.
+- Validation: Lens Studio TypeScript compilation succeeded; a fresh Preview reset produced no runtime errors; the combined dependency-free Node suite passed 63 tests with 0 failures.
+- Evidence is native SPECS 27 Preview plus Node tests, not LEAF. No package, authentication, publishing, deployment, repository-visibility, scene-material, or unrelated-project change was made.
+- Next bounded step: rehearse a manual pinch stroke on the intended device/Preview input, then update the under-three-minute demo script to present the optional virtual stroke without displacing the validated Practice Putt workflow.
