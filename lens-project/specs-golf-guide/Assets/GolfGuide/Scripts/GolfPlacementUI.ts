@@ -14,13 +14,13 @@ const PANEL_WIDTH_CM = 40
 const PANEL_HEIGHT_CM = 8
 const BUTTON_WIDTH_CM = 17
 const BUTTON_HEIGHT_CM = 4.2
-const QUICK_MENU_WIDTH_CM = 26
-const QUICK_MENU_HEIGHT_CM = 9
-const QUICK_BUTTON_WIDTH_CM = 9.5
-const QUICK_BUTTON_HEIGHT_CM = 4.2
+const QUICK_MENU_WIDTH_CM = 15.5
+const QUICK_MENU_HEIGHT_CM = 6.2
+const QUICK_BUTTON_WIDTH_CM = 6
+const QUICK_BUTTON_HEIGHT_CM = 3.4
 const QUICK_MENU_FORWARD_CM = 70
-const QUICK_MENU_RIGHT_CM = 7
-const QUICK_MENU_UP_CM = 8
+const QUICK_MENU_RIGHT_CM = 13
+const QUICK_MENU_UP_CM = -13
 const QUICK_MENU_ENTER_DOT = 0.819 // About 35 degrees from the view center.
 const QUICK_MENU_EXIT_DOT = 0.906 // About 25 degrees from the view center.
 const QUICK_MENU_ENTER_DELAY_SECONDS = 0.25
@@ -262,8 +262,6 @@ export class GolfPlacementUI extends BaseScriptComponent {
     root.getTransform().setLocalRotation(quat.quatIdentity())
 
     root.createComponent("Component.Canvas")
-    const backPlate = root.createComponent(BackPlate.getTypeName()) as BackPlate
-    backPlate.size = new vec2(QUICK_MENU_WIDTH_CM, QUICK_MENU_HEIGHT_CM)
 
     this.quickMenuRoot = root
     this.buildQuickMenuContent(root)
@@ -272,23 +270,23 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.applyQuickMenuTransition(0)
     root.enabled = false
     print(
-      "[GolfAdaptiveMenu] ready enterAngleDeg=35 exitAngleDeg=25 position=upper-right"
+      "[GolfAdaptiveMenu] ready enterAngleDeg=35 exitAngleDeg=25 position=bottom-right footprint=41pct"
     )
   }
 
   private buildQuickMenuContent(host: SceneObject): void {
     const content = global.scene.createSceneObject("AdaptiveQuickDiamond_Content")
     content.setParent(host)
-    content.getTransform().setLocalPosition(new vec3(0, 0, 0.6))
+    content.getTransform().setLocalPosition(new vec3(0, 0, 0.15))
     this.quickMenuContent = content
 
     const layout = content.createComponent(FlexLayout.getTypeName()) as FlexLayout
-    layout.width = QUICK_MENU_WIDTH_CM - 2.2
-    layout.height = QUICK_MENU_HEIGHT_CM - 2.2
+    layout.width = QUICK_MENU_WIDTH_CM
+    layout.height = QUICK_MENU_HEIGHT_CM
     layout.direction = FlexDirection.Row
     layout.justifyContent = FlexJustify.Center
     layout.alignItems = FlexAlign.Center
-    layout.columnGap = 0.8
+    layout.columnGap = 0.45
 
     this.createQuickButton(content, "QuickAction_LeftBase", 0)
     const diamond = global.scene.createSceneObject("QuickAction_DiamondCenter")
@@ -297,9 +295,9 @@ export class GolfPlacementUI extends BaseScriptComponent {
       ElementContent.getTypeName()
     ) as ElementContent
     diamondContent.text = "◆"
-    diamondContent.textSize = 24
+    diamondContent.textSize = 18
     diamondContent.contentAlignment = "center"
-    diamondContent.sizeOverride = new vec2(2.6, 2.6)
+    diamondContent.sizeOverride = new vec2(1.6, 1.6)
     diamond.createComponent(FlexItem.getTypeName())
     this.createQuickButton(content, "QuickAction_RightBase", 1)
   }
@@ -331,7 +329,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
       ElementContent.getTypeName()
     ) as ElementContent
     content.text = ""
-    content.textSize = 14
+    content.textSize = 12
     content.autoResize = true
 
     this.quickButtons.push(button)
