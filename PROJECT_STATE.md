@@ -155,3 +155,14 @@ Status: Official planning brief approved; standalone deterministic putting engin
 - Acceptance evidence remains manual/native SPECS 27 Preview plus 43 Node tests; no LEAF package, scenario, or pass exists.
 - Official Devpost requirements were rechecked: public repository, public YouTube video under three minutes showing Preview, English text description, and all live submission-form fields by 2026-11-09 5:00 PM EST.
 - Next bounded step: resolve the two environment references and signing-key ignore risk, validate a fresh remote clone in Lens Studio, then record/review the demo. Repository publication and Devpost submission remain explicit owner actions.
+
+## Batch 19 — Demonstration readiness (2026-11-03)
+- Target: private `RegiNava1/specs-golf-guide` `main`, verified base `1210029c92ec9c5d66eadaa95bf57dfa05ea85d2`.
+- Canonical Lens Studio preflight passed: MCP connected, project path matched, and authorization was true. TypeScript compilation succeeded; Preview rendered the Plane environment and placement UI; runtime reached `[GolfPlacement] ready: initial-placement`.
+- Runtime emitted two account/network warnings (`Host requires authentication`) but no Lens script, asset, material or gameplay exception. No package, scene, lighting, authentication or gameplay changes were made.
+- A fresh private-remote clone at the Batch 19 baseline completed, all seven Git LFS objects materialized, `git lfs fsck` passed, and the dependency-free Node suite passed 43 tests with 0 failures. The committed scene, scripts, meshes, PBR materials, SIK and UIKit were present.
+- The two Ambient Light UUIDs remain serialized and unresolved in the clean clone by explicit instruction. Opening that clone in Lens Studio was deferred because the current MCP/editor surface exposes one active project and no verified separate-instance workflow; switching projects could risk the validated canonical session.
+- Acceptance Criteria 1–5 retain prior owner-observed/manual Preview evidence and current automated logic coverage. They were not re-exercised through synthetic Preview automation because the official interaction path requires prohibited AiPreviewAgent helper packages. LEAF remains unrun.
+- Documented the owner-selected proprietary/no-open-source-license policy for project-authored source/content. Third-party package and asset licensing terms remain unchanged.
+- Demonstration plan remains the 2:15–2:35 sequence in `docs/submission-readiness-audit.md`. Remaining gates are a safely isolated clean-clone Lens Studio open, recording/reviewing the Preview demo, explicit public-repository approval, video upload, and Devpost submission.
+- Safety / cost: no paid services, package changes, publication, deployment, repository-visibility change, private-key access, unsupported scene editing or unrelated-repository access.

@@ -19,3 +19,10 @@ Run the complete automated suite with:
 ```powershell
 node --test --experimental-strip-types test/*.test.ts
 ```
+
+## Licensing policy
+
+Project-authored source code and content are proprietary and are not offered
+under an open-source license. Third-party packages and assets remain governed
+by their own license terms; this project policy does not modify or replace
+those terms.

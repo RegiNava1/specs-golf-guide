@@ -8,10 +8,11 @@ Submission deadline: 2026-11-09 at 5:00 PM EST
 
 ## Readiness summary
 
-The completed gameplay is ready to demonstrate in SPECS 27 Plane Interactive Preview. Public release should wait for the owner's explicit approval and two prepublication items:
+The completed gameplay is ready to demonstrate in SPECS 27 Plane Interactive Preview. Public release should wait for the owner's explicit approval and one remaining portability validation:
 
-1. Resolve or deliberately clear the two dangling ambient-environment texture references in `Assets/Scene.scene`, then open and compile a fresh remote checkout in Lens Studio.
-2. Protect the local untracked signing key from accidental staging before changing the repository from private to public.
+1. Preserve the two dangling ambient-environment texture references in `Assets/Scene.scene`, then open and compile a fresh remote checkout only when it can be done without replacing the validated canonical editor session.
+
+The local signing key is now protected by a narrowly scoped project ignore rule.
 
 No Lens publication or SPECS package ID is required by the hackathon rules; the required working artifact is the Lens Studio Preview project.
 
@@ -29,13 +30,14 @@ No Lens publication or SPECS package ID is required by the hackathon rules; the 
   - specular environment texture: `d795fd46-e16b-4cb9-8dfb-4ef227298f7a`
 - Lens Studio's asset database returns `null` for both UUIDs. Current compilation, Preview rendering, and runtime logs remain clean, so this is an environment-lighting portability defect rather than a demonstrated gameplay failure.
 - A fresh remote checkout was not opened in Lens Studio during this audit because doing so would replace the validated canonical editor session. Clean-clone Lens Studio open/compile therefore remains a final validation gap.
+- Batch 19 repeated the clean clone at `1210029c92ec9c5d66eadaa95bf57dfa05ea85d2`; LFS verification and all 43 Node tests passed. Opening it in Lens Studio remained deferred because no verified separate-instance workflow was available.
 
 ## Public-release and security findings
 
 ### Must address before public release
 
 - The rules require a **public** GitHub, GitLab, or Bitbucket repository at submission time. Keep this repository private until the owner explicitly approves publication.
-- `lens-project/specs-golf-guide/signing_key.pem` exists locally as an untracked file and is not covered by the current project `.gitignore`. It is absent from `origin/main` and its history. Never stage or publish it; add a specific ignore rule or move it outside the repository in a separate approved security batch.
+- `lens-project/specs-golf-guide/signing_key.pem` remains local and untracked and is covered by the exact `/signing_key.pem` project ignore rule. It is absent from `origin/main` and its history. Never stage or publish it.
 - The only origin remote is `RegiNava1/specs-golf-guide`. A scan of `origin/main` found no private keys, token patterns, credentials, absolute local paths, `.mcp.json`, live-instance files, AiPreviewAgent helpers, or CaptureRuntime helpers.
 - Local Codex checkpoint refs can retain snapshots of untracked working-tree files. Those refs are local and are not present under `refs/remotes/origin`; do not push non-main refs.
 
@@ -47,8 +49,9 @@ No Lens publication or SPECS package ID is required by the hackathon rules; the 
 
 ### Ownership and licensing review
 
-- No repository license is currently committed. The hackathon rules do not explicitly require an open-source license, but the public repository must remain available without charge for judging and testing through the judging period.
-- Before publication, the owner should choose whether to add a source license and confirm redistribution terms for all included template/package assets. SIK/UIKit are official Lens Studio packages and expected project dependencies, but this audit is not legal advice.
+- The owner has chosen a proprietary/no-open-source-license policy for project-authored source and content. The repository does not grant an open-source license.
+- Third-party packages and assets retain their original license terms; the project policy does not modify, replace or relicense them. SIK/UIKit remain official Lens Studio package dependencies. This audit is not legal advice.
+- The hackathon rules do not explicitly require an open-source license, but the public repository must remain available without charge for judging and testing through the judging period.
 - Do not include copyrighted music, third-party footage, private desktop content, account details, or unrelated trademarks in the video.
 
 ## Validation classification
@@ -88,9 +91,9 @@ Official requirements were rechecked on 2026-11-03 against the [overview](https:
 - [x] Built through CLAD, Lens Studio, and Lens Studio MCP.
 - [x] Runs consistently in Lens Studio SPECS Preview.
 - [x] Canonical Lens project, source, packages, metadata, and LFS objects are present on private `origin/main`.
-- [ ] Resolve/clear the two ambient-light dangling UUIDs and validate a fresh remote clone in Lens Studio.
-- [ ] Protect the local signing key with an explicit ignore/move step.
-- [ ] Decide repository license/attribution approach.
+- [ ] Preserve the two ambient-light dangling UUIDs and validate a fresh remote clone in Lens Studio when a separate editor session can be opened safely.
+- [x] Protect the local signing key with a narrowly scoped ignore rule.
+- [x] Document the proprietary/no-open-source-license policy without altering third-party terms.
 - [ ] Owner explicitly approves changing repository visibility to public.
 - [ ] After approval, make the repository public and confirm the public URL works while logged out.
 
