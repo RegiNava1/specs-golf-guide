@@ -2,9 +2,15 @@ import {AimDragInteraction} from "./AimDragInteraction"
 import {
   classifyPuttEndpoint,
   PRACTICE_TARGET_ZONE_DIAMETER_CM,
+  type PuttClassification,
 } from "./GolfOutcome"
 import {GolfOutcomeFeedbackUI} from "./GolfOutcomeFeedbackUI"
 import {GolfPlacementUI} from "./GolfPlacementUI"
+import {
+  createGhostCoachFeedback,
+  type GhostCoachFeedback,
+  type GhostCoachInput,
+} from "./GhostCoach"
 import {PlacementDragInteraction} from "./PlacementDragInteraction"
 import {
   DEFAULT_PRACTICE_RANGE_DISTANCE_CM,
@@ -86,6 +92,10 @@ export class GolfPlacementController extends BaseScriptComponent {
   private initialAimLineVisualLocalPosition = vec3.zero()
   private initialAimLineVisualLocalScale = new vec3(1, 1, 1)
   private initialAimArrowLocalPosition = vec3.zero()
+  private pendingGhostCoachInput: Omit<GhostCoachInput, "classification"> | null =
+    null
+  private completedGhostCoach: GhostCoachFeedback | null = null
+  private completedOutcome: PuttClassification | null = null
   onAwake(): void {
     this.createEvent("UpdateEvent").bind(() => this.updateRoll())
     this.createEvent("OnStartEvent").bind(() => {
@@ -106,6 +116,9 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.placementUI.onResetSetup.add(() => this.resetSetup())
       this.placementUI.onPracticeDistanceSelected.add((distanceCm) =>
         this.selectPracticeDistance(distanceCm)
+      )
+      this.placementUI.onContextualViewChanged.add((contextual) =>
+        this.handleContextualViewChanged(contextual)
       )
       this.dragInteraction.onDragUpdate.add((position) => this.handlePlacementUpdate(position))
       this.aimDragInteraction.onDragUpdate.add((direction) => this.handleAimUpdate(direction))
@@ -304,6 +317,13 @@ export class GolfPlacementController extends BaseScriptComponent {
       return
     }
 
+    this.pendingGhostCoachInput = {
+      aimDeviation: capture.outcome.aimDeviation,
+      distanceFeedback: capture.outcome.distanceFeedback,
+      selectedDistanceCm: this.selectedPracticeDistanceCm,
+      travelDistanceCm: capture.outcome.travelDistanceCm,
+    }
+
     this.beginRoll(
       capture.endpoint,
       capture.direction,
@@ -337,6 +357,11 @@ export class GolfPlacementController extends BaseScriptComponent {
     )
     this.rollSource = source
     this.rollStrength = strength
+    if (source !== "virtual-stroke") {
+      this.pendingGhostCoachInput = null
+    }
+    this.completedGhostCoach = null
+    this.completedOutcome = null
     this.targetPositionAtRollStart = this.targetAnchor.getTransform().getWorldPosition()
     this.rollElapsedSeconds = 0
     this.midpointLogged = false
@@ -396,7 +421,21 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.rollStartPosition
     )
     this.placementUI.showRollComplete(outcome.classification)
-    this.outcomeFeedback.showOutcome(outcome.classification)
+    this.completedOutcome = outcome.classification
+    if (this.rollSource === "virtual-stroke" && this.pendingGhostCoachInput) {
+      this.completedGhostCoach = createGhostCoachFeedback({
+        classification: outcome.classification,
+        ...this.pendingGhostCoachInput,
+      })
+      this.outcomeFeedback.showGhostCoach(this.completedGhostCoach)
+      console.log(
+        `[GhostCoach] outcome=${this.completedGhostCoach.outcome} classification=${this.completedGhostCoach.classification} summary=${this.completedGhostCoach.summary} tip=${this.completedGhostCoach.tip}`
+      )
+    } else {
+      this.completedGhostCoach = null
+      this.outcomeFeedback.showOutcome(outcome.classification)
+    }
+    this.pendingGhostCoachInput = null
     const targetStable = targetPosition.distance(this.targetPositionAtRollStart) < 0.001
     console.log(
       `[GolfPutt] action=COMPLETE_ROLL phase=result source=${this.rollSource} strength=${this.rollStrength.toFixed(3)} outcome=${outcome.classification} endpointErrorCm=${outcome.distanceFromTargetCm.toFixed(2)} targetZoneDiameterCm=${PRACTICE_TARGET_ZONE_DIAMETER_CM.toFixed(2)} elapsed=${this.rollElapsedSeconds.toFixed(3)} position=${this.formatPosition(this.rollEndPosition)} targetStable=${targetStable}`
@@ -423,6 +462,9 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.aimHandle.enabled = false
     this.strokeHandle.enabled = true
     this.outcomeFeedback.hide()
+    this.pendingGhostCoachInput = null
+    this.completedGhostCoach = null
+    this.completedOutcome = null
     this.placementUI.showRetryReady()
 
     const setupPosition = this.puttingSetupRoot.getTransform().getLocalPosition()
@@ -474,6 +516,9 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.rollCompletionDispatched = false
     this.rollSource = "practice-putt"
     this.rollStrength = 1
+    this.pendingGhostCoachInput = null
+    this.completedGhostCoach = null
+    this.completedOutcome = null
     this.dragInteraction.setInteractionEnabled(false)
     this.aimDragInteraction.setInteractionEnabled(false)
     this.strokeInteraction.setInteractionEnabled(false)
@@ -545,6 +590,21 @@ export class GolfPlacementController extends BaseScriptComponent {
       if (guideDirection.length > 0.0001) {
         this.guideDirectionLocal = guideDirection.normalize()
       }
+    }
+  }
+
+  private handleContextualViewChanged(contextual: boolean): void {
+    if (!contextual) {
+      this.outcomeFeedback.hide()
+      return
+    }
+    if (this.phase !== "result" || !this.completedOutcome) {
+      return
+    }
+    if (this.completedGhostCoach) {
+      this.outcomeFeedback.showGhostCoach(this.completedGhostCoach)
+    } else {
+      this.outcomeFeedback.showOutcome(this.completedOutcome)
     }
   }
 

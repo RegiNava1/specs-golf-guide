@@ -79,6 +79,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
   public readonly onTryAgain = new Event<void>()
   public readonly onResetSetup = new Event<void>()
   public readonly onPracticeDistanceSelected = new Event<number>()
+  public readonly onContextualViewChanged = new Event<boolean>()
 
   private placementControlsObject!: SceneObject
   private aimControlsObject!: SceneObject
@@ -401,6 +402,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.menuView = "home"
     this.statusText.text = "Practice Home\nResume or reset the station"
     this.applyMenuView()
+    this.onContextualViewChanged.invoke(false)
   }
 
   private openRange(): void {
@@ -427,6 +429,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.menuView = "contextual"
     this.restorePhaseStatus()
     this.applyMenuView()
+    this.onContextualViewChanged.invoke(true)
   }
 
   public setPracticeDistance(distanceCm: number): void {
