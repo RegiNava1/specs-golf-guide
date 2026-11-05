@@ -49,13 +49,18 @@ const QUICK_BUTTON_WIDTH_CM = 6
 const QUICK_BUTTON_HEIGHT_CM = 3.4
 const QUICK_CENTER_BUTTON_SIZE_CM = 3.2
 const QUICK_MENU_FORWARD_CM = 70
-const QUICK_MENU_RIGHT_CM = 10
+const QUICK_MENU_RIGHT_CM = 8.5
 const QUICK_MENU_UP_CM = -13
 const QUICK_MENU_ENTER_DOT = 0.819 // About 35 degrees from the view center.
 const QUICK_MENU_EXIT_DOT = 0.906 // About 25 degrees from the view center.
 const QUICK_MENU_ENTER_DELAY_SECONDS = 0.25
 const QUICK_MENU_EXIT_DELAY_SECONDS = 0.35
 const QUICK_MENU_ACTION_COOLDOWN_SECONDS = 0.3
+const QUICK_MENU_DOCK_SWITCH_DELAY_SECONDS = 0.35
+const QUICK_MENU_DOCK_BLEND_RATE = 7
+const QUICK_MENU_SAFE_EDGE_UV = 0.035
+const QUICK_MENU_GEOMETRY_MARGIN_UV = 0.018
+const QUICK_MENU_CURRENT_DOCK_MARGIN_UV = 0.012
 const TEMP_PREVIEW_FORWARD_CM = 70
 const TEMP_PREVIEW_TOP_UP_CM = 16
 const TEMP_PREVIEW_LOWER_LEFT_RIGHT_CM = -4
@@ -71,6 +76,14 @@ const TEMP_PREVIEW_TOP_MENU_SCREEN_Y = 0.34
 type MenuPhase = "placement" | "aiming" | "rolling" | "result"
 type MenuView = "contextual" | "home" | "range"
 type TemporaryPreviewRegion = "top" | "lower-left"
+type QuickMenuDock = "lower-right" | "lower-left" | "upper-right" | "upper-left"
+
+type ScreenRect = {
+  left: number
+  right: number
+  top: number
+  bottom: number
+}
 
 type QuickAction = {
   label: string
@@ -114,6 +127,10 @@ export class GolfPlacementUI extends BaseScriptComponent {
   private setupTransform: Transform | null = null
   private ballTransform: Transform | null = null
   private targetTransform: Transform | null = null
+  private practiceZoneTransform: Transform | null = null
+  private holeTransform: Transform | null = null
+  private aimHandleTransform: Transform | null = null
+  private strokeHandleTransform: Transform | null = null
   private temporaryPreviewRoot: SceneObject | null = null
   private temporaryPreviewVisible = false
   private temporaryPreviewVisibilityElapsed = 0
@@ -132,6 +149,16 @@ export class GolfPlacementUI extends BaseScriptComponent {
   private viewThresholdElapsed = 0
   private quickActionCooldown = 0
   private compactNavigationOpen = false
+  private quickMenuDock: QuickMenuDock = "lower-right"
+  private pendingQuickMenuDock: QuickMenuDock = "lower-right"
+  private pendingQuickMenuDockElapsed = 0
+  private quickMenuDockTarget = new vec3(
+    QUICK_MENU_RIGHT_CM,
+    QUICK_MENU_UP_CM,
+    -QUICK_MENU_FORWARD_CM
+  )
+  private quickMenuGeometryCollapsed = false
+  private quickMenuDockDiagnosticsPrinted = false
   private selectedPracticeDistanceCm: PracticeRangeDistanceCm =
     DEFAULT_PRACTICE_RANGE_DISTANCE_CM
   private rangeButtons: Array<{distance: PracticeRangeDistanceCm; button: Button}> = []
@@ -614,6 +641,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     }
     this.cameraTransform = cameraObject.getTransform()
     this.cameraComponent = cameraObject.getComponent("Component.Camera") as Camera
+    this.captureQuickMenuGeometryTransforms()
 
     const root = global.scene.createSceneObject("AdaptiveQuickMenu_Root")
     root.setParent(cameraObject)
@@ -637,7 +665,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.applyQuickMenuTransition(0)
     root.enabled = false
     print(
-      "[GolfAdaptiveMenu] ready enterAngleDeg=35 exitAngleDeg=25 position=bottom-right footprint=41pct"
+      "[GolfAdaptiveMenu] ready enterAngleDeg=35 exitAngleDeg=25 geometryAwareDocks=4 preferred=lower-right"
     )
   }
 
@@ -743,16 +771,19 @@ export class GolfPlacementUI extends BaseScriptComponent {
     for (let index = 0; index < this.quickButtonLabels.length; index += 1) {
       const action = this.quickActions[index]
       this.quickButtonLabels[index].text = action?.label ?? ""
-      this.quickButtons[index].getSceneObject().enabled = action !== undefined
+      this.quickButtons[index].getSceneObject().enabled =
+        action !== undefined && !this.quickMenuGeometryCollapsed
     }
     if (this.quickCenterLabel && this.quickCenterButton) {
-      this.quickCenterLabel.text = this.compactNavigationOpen
-        ? this.menuView === "range"
-          ? "Back"
-          : this.menuPhase === "result"
-            ? "Close"
-            : "Range"
-        : "Menu"
+      this.quickCenterLabel.text = this.quickMenuGeometryCollapsed
+        ? "Menu"
+        : this.compactNavigationOpen
+          ? this.menuView === "range"
+            ? "Back"
+            : this.menuPhase === "result"
+              ? "Close"
+              : "Range"
+          : "Menu"
       this.quickCenterButton.getSceneObject().enabled = this.menuPhase !== "rolling"
     }
   }
@@ -877,6 +908,8 @@ export class GolfPlacementUI extends BaseScriptComponent {
       return
     }
 
+    this.updateQuickMenuDock(deltaTime)
+
     const viewDot = this.getPanelViewDot()
     const beyondThreshold = this.quickMenuActive
       ? viewDot > QUICK_MENU_EXIT_DOT
@@ -904,6 +937,264 @@ export class GolfPlacementUI extends BaseScriptComponent {
       this.applyQuickMenuTransition(0)
       this.quickMenuRoot.enabled = false
     }
+  }
+
+  private captureQuickMenuGeometryTransforms(): void {
+    this.ballTransform = this.findSceneObjectByName(
+      "GolfGuide_Development"
+    )?.getTransform() ?? null
+    this.targetTransform = this.findSceneObjectByName(
+      "Target_Anchor"
+    )?.getTransform() ?? null
+    this.practiceZoneTransform = this.findSceneObjectByName(
+      "PracticeZone_Visual"
+    )?.getTransform() ?? null
+    this.holeTransform =
+      this.findSceneObjectByName("HoleMarker_Visual")?.getTransform() ??
+      this.findSceneObjectByName("HoleRim_Visual")?.getTransform() ??
+      null
+    this.aimHandleTransform = this.findSceneObjectByName(
+      "AimHandle_Anchor"
+    )?.getTransform() ?? null
+    this.strokeHandleTransform = this.findSceneObjectByName(
+      "StrokeHandle_Anchor"
+    )?.getTransform() ?? null
+  }
+
+  private updateQuickMenuDock(deltaTime: number): void {
+    if (!this.quickMenuRoot || !this.cameraTransform || !this.cameraComponent) {
+      return
+    }
+
+    const currentScore = this.getQuickMenuDockCollisionScore(
+      this.quickMenuDock,
+      QUICK_MENU_CURRENT_DOCK_MARGIN_UV
+    )
+    let desiredDock = this.quickMenuDock
+    let desiredCollapsed = false
+
+    if (currentScore > 0) {
+      const candidates: QuickMenuDock[] = [
+        "lower-right",
+        "lower-left",
+        "upper-right",
+        "upper-left",
+      ]
+      let bestScore = Number.MAX_SAFE_INTEGER
+      const diagnosticScores: string[] = []
+      for (const candidate of candidates) {
+        const score = this.getQuickMenuDockCollisionScore(
+          candidate,
+          QUICK_MENU_GEOMETRY_MARGIN_UV
+        )
+        diagnosticScores.push(`${candidate}:${score}`)
+        if (score < bestScore) {
+          bestScore = score
+          desiredDock = candidate
+        }
+        if (score === 0) {
+          break
+        }
+      }
+      if (!this.quickMenuDockDiagnosticsPrinted) {
+        this.quickMenuDockDiagnosticsPrinted = true
+        print(`[GolfAdaptiveMenu] dockScores=${diagnosticScores.join(",")}`)
+      }
+      desiredCollapsed = bestScore > 0
+    }
+
+    if (desiredDock !== this.pendingQuickMenuDock) {
+      this.pendingQuickMenuDock = desiredDock
+      this.pendingQuickMenuDockElapsed = 0
+    } else if (
+      desiredDock !== this.quickMenuDock ||
+      desiredCollapsed !== this.quickMenuGeometryCollapsed
+    ) {
+      this.pendingQuickMenuDockElapsed += deltaTime
+      if (
+        this.pendingQuickMenuDockElapsed >= QUICK_MENU_DOCK_SWITCH_DELAY_SECONDS
+      ) {
+        this.quickMenuDock = desiredDock
+        this.quickMenuDockTarget = this.getQuickMenuDockPosition(desiredDock)
+        this.pendingQuickMenuDockElapsed = 0
+        this.setQuickMenuGeometryCollapsed(desiredCollapsed)
+        print(
+          `[GolfAdaptiveMenu] dock=${desiredDock} collapsed=${desiredCollapsed}`
+        )
+      }
+    } else {
+      this.pendingQuickMenuDockElapsed = 0
+    }
+
+    const currentPosition = this.quickMenuRoot.getTransform().getLocalPosition()
+    const blend = Math.min(1, deltaTime * QUICK_MENU_DOCK_BLEND_RATE)
+    const nextPosition = currentPosition.add(
+      this.quickMenuDockTarget.sub(currentPosition).uniformScale(blend)
+    )
+    this.quickMenuRoot.getTransform().setLocalPosition(nextPosition)
+  }
+
+  private setQuickMenuGeometryCollapsed(collapsed: boolean): void {
+    if (this.quickMenuGeometryCollapsed === collapsed) {
+      return
+    }
+    this.quickMenuGeometryCollapsed = collapsed
+    this.refreshQuickActions()
+  }
+
+  private getQuickMenuDockPosition(dock: QuickMenuDock): vec3 {
+    const right = dock.endsWith("right")
+      ? QUICK_MENU_RIGHT_CM
+      : -QUICK_MENU_RIGHT_CM
+    const up = dock.startsWith("upper")
+      ? -QUICK_MENU_UP_CM
+      : QUICK_MENU_UP_CM
+    return new vec3(right, up, -QUICK_MENU_FORWARD_CM)
+  }
+
+  private getQuickMenuDockCollisionScore(
+    dock: QuickMenuDock,
+    margin: number
+  ): number {
+    const rect = this.getQuickMenuDockScreenRect(dock, margin)
+    if (!rect) {
+      return 100
+    }
+    if (
+      rect.left < QUICK_MENU_SAFE_EDGE_UV ||
+      rect.right > 1 - QUICK_MENU_SAFE_EDGE_UV ||
+      rect.top < QUICK_MENU_SAFE_EDGE_UV ||
+      rect.bottom > 1 - QUICK_MENU_SAFE_EDGE_UV
+    ) {
+      return 50
+    }
+
+    let score = 0
+    const transforms = [
+      this.ballTransform,
+      this.targetTransform,
+      this.practiceZoneTransform,
+      this.holeTransform,
+      this.strokeHandleTransform,
+    ]
+    for (const transform of transforms) {
+      const screen = this.projectVisibleTransform(transform)
+      if (screen && this.screenPointInsideRect(screen, rect)) {
+        score += 2
+      }
+    }
+
+    const lineStart = this.projectVisibleTransform(this.ballTransform)
+    const lineEnd = this.projectVisibleTransform(
+      this.aimHandleTransform ?? this.targetTransform
+    )
+    if (lineStart && lineEnd) {
+      for (let index = 0; index <= 12; index += 1) {
+        const progress = index / 12
+        const sample = new vec2(
+          lineStart.x + (lineEnd.x - lineStart.x) * progress,
+          lineStart.y + (lineEnd.y - lineStart.y) * progress
+        )
+        if (this.screenPointInsideRect(sample, rect)) {
+          score += 1
+          break
+        }
+      }
+    }
+    if (this.temporaryPreviewVisible && this.temporaryPreviewRoot) {
+      const previewRect = this.getCameraLocalScreenRect(
+        this.temporaryPreviewRoot.getTransform().getLocalPosition(),
+        TEMP_PREVIEW_WIDTH_CM,
+        TEMP_PREVIEW_HEIGHT_CM,
+        QUICK_MENU_GEOMETRY_MARGIN_UV
+      )
+      if (this.screenRectsOverlap(rect, previewRect)) {
+        score += 4
+      }
+    }
+    return score
+  }
+
+  private getQuickMenuDockScreenRect(
+    dock: QuickMenuDock,
+    margin: number
+  ): ScreenRect | null {
+    if (!this.cameraTransform || !this.cameraComponent) {
+      return null
+    }
+    return this.getCameraLocalScreenRect(
+      this.getQuickMenuDockPosition(dock),
+      QUICK_MENU_WIDTH_CM,
+      QUICK_MENU_HEIGHT_CM,
+      margin
+    )
+  }
+
+  private getCameraLocalScreenRect(
+    centerLocal: vec3,
+    widthCm: number,
+    heightCm: number,
+    margin: number
+  ): ScreenRect {
+    const center = this.projectCameraLocalPoint(centerLocal)
+    const horizontal = this.projectCameraLocalPoint(
+      centerLocal.add(new vec3(widthCm / 2, 0, 0))
+    )
+    const vertical = this.projectCameraLocalPoint(
+      centerLocal.add(new vec3(0, heightCm / 2, 0))
+    )
+    const halfWidth = Math.abs(horizontal.x - center.x) + margin
+    const halfHeight = Math.abs(vertical.y - center.y) + margin
+    return {
+      left: center.x - halfWidth,
+      right: center.x + halfWidth,
+      top: center.y - halfHeight,
+      bottom: center.y + halfHeight,
+    }
+  }
+
+  private projectCameraLocalPoint(localPosition: vec3): vec2 {
+    const worldPosition = this.cameraTransform!.getWorldPosition().add(
+      this.cameraTransform!
+        .getWorldRotation()
+        .multiplyVec3(localPosition)
+    )
+    return this.cameraComponent!.worldSpaceToScreenSpace(worldPosition)
+  }
+
+  private projectVisibleTransform(transform: Transform | null): vec2 | null {
+    if (!transform || !this.cameraComponent) {
+      return null
+    }
+    if (this.getTransformViewDot(transform) <= 0.1) {
+      return null
+    }
+    const screen = this.cameraComponent.worldSpaceToScreenSpace(
+      transform.getWorldPosition()
+    )
+    // Keep modestly off-screen endpoints so a visible line segment that crosses the
+    // viewport is still considered even when its ball or handle is just outside it.
+    return screen.x >= -4 && screen.x <= 4 && screen.y >= -4 && screen.y <= 4
+      ? screen
+      : null
+  }
+
+  private screenPointInsideRect(point: vec2, rect: ScreenRect): boolean {
+    return (
+      point.x >= rect.left &&
+      point.x <= rect.right &&
+      point.y >= rect.top &&
+      point.y <= rect.bottom
+    )
+  }
+
+  private screenRectsOverlap(first: ScreenRect, second: ScreenRect): boolean {
+    return !(
+      first.right < second.left ||
+      first.left > second.right ||
+      first.bottom < second.top ||
+      first.top > second.bottom
+    )
   }
 
   private updateTemporarySetupPreview(deltaTime: number): void {
