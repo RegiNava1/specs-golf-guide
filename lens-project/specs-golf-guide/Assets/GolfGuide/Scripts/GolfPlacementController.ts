@@ -7,6 +7,11 @@ import {GolfOutcomeFeedbackUI} from "./GolfOutcomeFeedbackUI"
 import {GolfPlacementUI} from "./GolfPlacementUI"
 import {PlacementDragInteraction} from "./PlacementDragInteraction"
 import {
+  DEFAULT_PRACTICE_RANGE_DISTANCE_CM,
+  isPracticeRangeDistanceCm,
+  type PracticeRangeDistanceCm,
+} from "./PracticeRange"
+import {
   VirtualStrokeInteraction,
   type VirtualStrokeCapture,
 } from "./VirtualStrokeInteraction"
@@ -17,7 +22,6 @@ type PlacementPhase =
   | "rolling"
   | "result"
 type RollSource = "practice-putt" | "virtual-stroke"
-const PUTT_TRAVEL_DISTANCE_CM = 150
 const PUTT_ROLL_DURATION_SECONDS = 1.5
 /**
  * Lens adapter for the already-tested ACTIVATE_MOVE_SETUP,
@@ -73,6 +77,15 @@ export class GolfPlacementController extends BaseScriptComponent {
   private initialAimHandleLocalPosition = vec3.zero()
   private initialPlacementHandleLocalPosition = vec3.zero()
   private initialStrokeHandleLocalPosition = vec3.zero()
+  private selectedPracticeDistanceCm: PracticeRangeDistanceCm =
+    DEFAULT_PRACTICE_RANGE_DISTANCE_CM
+  private fixedRangeDirectionLocal = new vec3(0, 0, -1)
+  private guideDirectionLocal = new vec3(0, 0, -1)
+  private aimLineVisual: SceneObject | null = null
+  private aimArrowVisual: SceneObject | null = null
+  private initialAimLineVisualLocalPosition = vec3.zero()
+  private initialAimLineVisualLocalScale = new vec3(1, 1, 1)
+  private initialAimArrowLocalPosition = vec3.zero()
   onAwake(): void {
     this.createEvent("UpdateEvent").bind(() => this.updateRoll())
     this.createEvent("OnStartEvent").bind(() => {
@@ -91,11 +104,15 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.placementUI.onPracticePutt.add(() => this.startPracticePutt())
       this.placementUI.onTryAgain.add(() => this.tryAgain())
       this.placementUI.onResetSetup.add(() => this.resetSetup())
+      this.placementUI.onPracticeDistanceSelected.add((distanceCm) =>
+        this.selectPracticeDistance(distanceCm)
+      )
       this.dragInteraction.onDragUpdate.add((position) => this.handlePlacementUpdate(position))
       this.aimDragInteraction.onDragUpdate.add((direction) => this.handleAimUpdate(direction))
       this.strokeInteraction.onStrokeCaptured.add((capture) =>
         this.handleVirtualStroke(capture)
       )
+      this.placementUI.setPracticeDistance(this.selectedPracticeDistanceCm)
       print("[GolfPlacement] ready: initial-placement")
     })
   }
@@ -196,6 +213,72 @@ export class GolfPlacementController extends BaseScriptComponent {
     )
   }
 
+  private selectPracticeDistance(distanceCm: number): void {
+    if (
+      this.phase === "rolling" ||
+      this.phase === "result" ||
+      !isPracticeRangeDistanceCm(distanceCm)
+    ) {
+      return
+    }
+
+    this.applyPracticeDistance(distanceCm)
+    console.log(
+      `[GolfRange] action=SELECT_DISTANCE phase=${this.phase} distanceCm=${distanceCm} target=${this.formatPosition(
+        this.targetAnchor.getTransform().getWorldPosition()
+      )} aimGuideCm=${distanceCm}`
+    )
+  }
+
+  private applyPracticeDistance(distanceCm: PracticeRangeDistanceCm): void {
+    this.selectedPracticeDistanceCm = distanceCm
+
+    const targetLocalPosition = this.initialAimLineLocalPosition.add(
+      this.fixedRangeDirectionLocal.uniformScale(distanceCm)
+    )
+    this.targetAnchor.getTransform().setLocalPosition(targetLocalPosition)
+
+    if (this.aimLineVisual) {
+      const linePosition = this.initialAimLineVisualLocalPosition
+        .sub(this.guideDirectionLocal.uniformScale(
+          DEFAULT_PRACTICE_RANGE_DISTANCE_CM / 2
+        ))
+        .add(this.guideDirectionLocal.uniformScale(distanceCm / 2))
+      const lineScale = this.initialAimLineVisualLocalScale
+      this.aimLineVisual.getTransform().setLocalPosition(linePosition)
+      this.aimLineVisual.getTransform().setLocalScale(
+        new vec3(
+          lineScale.x,
+          lineScale.y,
+          lineScale.z *
+            (distanceCm / DEFAULT_PRACTICE_RANGE_DISTANCE_CM)
+        )
+      )
+    }
+
+    if (this.aimArrowVisual) {
+      const arrowPosition = this.initialAimArrowLocalPosition
+        .sub(this.guideDirectionLocal.uniformScale(
+          DEFAULT_PRACTICE_RANGE_DISTANCE_CM
+        ))
+        .add(this.guideDirectionLocal.uniformScale(distanceCm))
+      this.aimArrowVisual.getTransform().setLocalPosition(arrowPosition)
+    }
+
+    const aimHandlePosition = this.initialAimHandleLocalPosition
+      .sub(this.guideDirectionLocal.uniformScale(
+        DEFAULT_PRACTICE_RANGE_DISTANCE_CM
+      ))
+      .add(this.guideDirectionLocal.uniformScale(distanceCm))
+    this.aimHandle.getTransform().setLocalPosition(aimHandlePosition)
+
+    if (this.aimAdjustmentActive) {
+      this.targetPositionAtAimStart =
+        this.targetAnchor.getTransform().getWorldPosition()
+    }
+    this.placementUI.setPracticeDistance(distanceCm)
+  }
+
   private startPracticePutt(): void {
     if (this.phase !== "aiming" || this.rollCompletionDispatched) {
       return
@@ -209,9 +292,9 @@ export class GolfPlacementController extends BaseScriptComponent {
     const direction = planar.normalize()
     const startPosition = this.ballVisual.getTransform().getWorldPosition()
     const endpoint = new vec3(
-      startPosition.x + direction.x * PUTT_TRAVEL_DISTANCE_CM,
+      startPosition.x + direction.x * this.selectedPracticeDistanceCm,
       startPosition.y,
-      startPosition.z + direction.z * PUTT_TRAVEL_DISTANCE_CM
+      startPosition.z + direction.z * this.selectedPracticeDistanceCm
     )
     this.beginRoll(endpoint, direction, "practice-putt", 1)
   }
@@ -379,6 +462,7 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.strokeHandle
       .getTransform()
       .setLocalPosition(this.initialStrokeHandleLocalPosition)
+    this.applyPracticeDistance(DEFAULT_PRACTICE_RANGE_DISTANCE_CM)
 
     this.phase = "initial-placement"
     this.aimAdjustmentActive = false
@@ -407,7 +491,7 @@ export class GolfPlacementController extends BaseScriptComponent {
         this.ballVisual.getTransform().getWorldPosition()
       )} target=${this.formatPosition(
         this.targetAnchor.getTransform().getWorldPosition()
-      )} aim=(0.0000,-1.0000) feedbackCleared=true`
+      )} aim=(0.0000,-1.0000) distanceCm=${this.selectedPracticeDistanceCm} feedbackCleared=true`
     )
   }
 
@@ -428,6 +512,56 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.placementHandle.getTransform().getLocalPosition()
     this.initialStrokeHandleLocalPosition =
       this.strokeHandle.getTransform().getLocalPosition()
+
+    const fixedRange = this.initialTargetLocalPosition.sub(
+      this.initialAimLineLocalPosition
+    )
+    if (fixedRange.length > 0.0001) {
+      this.fixedRangeDirectionLocal = fixedRange.normalize()
+    }
+
+    this.aimLineVisual = this.findDescendantByName(
+      this.aimLineAnchor,
+      "AimLine_Visual"
+    )
+    this.aimArrowVisual = this.findDescendantByName(
+      this.aimLineAnchor,
+      "AimArrow_Visual"
+    )
+    if (this.aimLineVisual) {
+      this.initialAimLineVisualLocalPosition =
+        this.aimLineVisual.getTransform().getLocalPosition()
+      this.initialAimLineVisualLocalScale =
+        this.aimLineVisual.getTransform().getLocalScale()
+    }
+    if (this.aimArrowVisual) {
+      this.initialAimArrowLocalPosition =
+        this.aimArrowVisual.getTransform().getLocalPosition()
+      const guideDirection = new vec3(
+        this.initialAimArrowLocalPosition.x,
+        0,
+        this.initialAimArrowLocalPosition.z
+      )
+      if (guideDirection.length > 0.0001) {
+        this.guideDirectionLocal = guideDirection.normalize()
+      }
+    }
+  }
+
+  private findDescendantByName(
+    root: SceneObject,
+    name: string
+  ): SceneObject | null {
+    if (root.name === name) {
+      return root
+    }
+    for (let index = 0; index < root.getChildrenCount(); index += 1) {
+      const match = this.findDescendantByName(root.getChild(index), name)
+      if (match) {
+        return match
+      }
+    }
+    return null
   }
 
   private formatPosition(position: vec3): string {

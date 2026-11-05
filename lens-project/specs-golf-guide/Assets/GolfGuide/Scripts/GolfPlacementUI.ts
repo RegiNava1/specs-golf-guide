@@ -10,6 +10,12 @@ import {
 } from "SpectaclesUIKit.lspkg/Scripts/Components/Layout2D/Flex/FlexTypes"
 import Event from "SpectaclesInteractionKit.lspkg/Utils/Event"
 import type {PuttClassification} from "./GolfOutcome"
+import {
+  DEFAULT_PRACTICE_RANGE_DISTANCE_CM,
+  isPracticeRangeDistanceCm,
+  PRACTICE_RANGE_DISTANCES_CM,
+  type PracticeRangeDistanceCm,
+} from "./PracticeRange"
 
 const PANEL_WIDTH_CM = 40
 const PANEL_HEIGHT_CM = 13
@@ -27,6 +33,9 @@ const NAV_ROW_Y_CM = 3.6
 const NAV_BUTTON_WIDTH_CM = 8.5
 const NAV_BUTTON_HEIGHT_CM = 3
 const NAV_BUTTON_LABEL_SIZE = 38
+const RANGE_BUTTON_WIDTH_CM = 5.6
+const RANGE_BUTTON_HEIGHT_CM = 5.2
+const RANGE_BUTTON_LABEL_SIZE = 36
 const STROKE_GUIDANCE_TEXT =
   "Drag the cyan ring back,\nthen stroke forward through the ball."
 const STROKE_LABEL_TEXT = "Stroke Practice"
@@ -53,7 +62,7 @@ const TEMP_PREVIEW_HEIGHT_CM = 5.5
 const TEMP_PREVIEW_SHOW_DOT = 0.72
 
 type MenuPhase = "placement" | "aiming" | "rolling" | "result"
-type MenuView = "contextual" | "home"
+type MenuView = "contextual" | "home" | "range"
 
 type QuickAction = {
   label: string
@@ -69,11 +78,13 @@ export class GolfPlacementUI extends BaseScriptComponent {
   public readonly onPracticePutt = new Event<void>()
   public readonly onTryAgain = new Event<void>()
   public readonly onResetSetup = new Event<void>()
+  public readonly onPracticeDistanceSelected = new Event<number>()
 
   private placementControlsObject!: SceneObject
   private aimControlsObject!: SceneObject
   private resultControlsObject!: SceneObject
   private homeControlsObject!: SceneObject
+  private rangeControlsObject!: SceneObject
   private navigationControlsObject!: SceneObject
   private moveButtonObject!: SceneObject
   private confirmButtonObject!: SceneObject
@@ -95,6 +106,10 @@ export class GolfPlacementUI extends BaseScriptComponent {
   private quickMenuTransition = 0
   private viewThresholdElapsed = 0
   private quickActionCooldown = 0
+  private selectedPracticeDistanceCm: PracticeRangeDistanceCm =
+    DEFAULT_PRACTICE_RANGE_DISTANCE_CM
+  private rangeButtons: Array<{distance: PracticeRangeDistanceCm; button: Button}> = []
+  private resultStatus: PuttClassification | null = null
 
   onAwake(): void {
     this.sceneObject.createComponent("Component.Canvas")
@@ -222,10 +237,10 @@ export class GolfPlacementUI extends BaseScriptComponent {
     homeLayout.columnGap = 1.2
     this.createButton(
       this.homeControlsObject,
-      "ResumePractice_Control",
-      "Resume Practice",
+      "PracticeRange_Control",
+      "Practice Range",
       "Primary",
-      () => this.closeHome()
+      () => this.openRange()
     )
     this.createButton(
       this.homeControlsObject,
@@ -235,6 +250,28 @@ export class GolfPlacementUI extends BaseScriptComponent {
       () => this.onResetSetup.invoke()
     )
     this.homeControlsObject.enabled = false
+
+    this.rangeControlsObject = global.scene.createSceneObject(
+      "PracticeRangeControls_Content"
+    )
+    this.rangeControlsObject.setParent(this.sceneObject)
+    this.rangeControlsObject
+      .getTransform()
+      .setLocalPosition(new vec3(0, ACTION_ROW_Y_CM, 0.95))
+    const rangeLayout = this.rangeControlsObject.createComponent(
+      FlexLayout.getTypeName()
+    ) as FlexLayout
+    rangeLayout.width = PANEL_WIDTH_CM - 3
+    rangeLayout.height = RANGE_BUTTON_HEIGHT_CM
+    rangeLayout.direction = FlexDirection.Row
+    rangeLayout.justifyContent = FlexJustify.Center
+    rangeLayout.alignItems = FlexAlign.Center
+    rangeLayout.columnGap = 0.35
+    for (const distance of PRACTICE_RANGE_DISTANCES_CM) {
+      this.createRangeButton(this.rangeControlsObject, distance)
+    }
+    this.rangeControlsObject.enabled = false
+    this.refreshRangeButtons()
 
     this.navigationControlsObject = global.scene.createSceneObject(
       "MenuNavigation_Content"
@@ -255,7 +292,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
       this.navigationControlsObject,
       "BackNavigation_Control",
       "Back",
-      () => this.closeHome()
+      () => this.closeMenu()
     )
     this.createNavigationButton(
       this.navigationControlsObject,
@@ -332,6 +369,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.menuPhase = "result"
     this.menuView = "contextual"
     this.statusText.text = outcome
+    this.resultStatus = outcome
     this.resultRevealButton.opacity = 1
     this.applyMenuView()
     this.refreshQuickActions()
@@ -341,6 +379,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.menuPhase = "aiming"
     this.menuView = "contextual"
     this.statusText.text = STROKE_GUIDANCE_TEXT
+    this.resultStatus = null
     this.adjustButton.opacity = 1
     this.applyMenuView()
     this.refreshQuickActions()
@@ -350,6 +389,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.menuPhase = "placement"
     this.menuView = "contextual"
     this.statusText.text = "Select Move Setup,\nthen drag the cyan handle"
+    this.resultStatus = null
     this.applyMenuView()
     this.refreshQuickActions()
   }
@@ -363,13 +403,41 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.applyMenuView()
   }
 
-  private closeHome(): void {
-    if (this.menuPhase === "rolling" || this.menuView !== "home") {
+  private openRange(): void {
+    if (
+      this.menuPhase === "rolling" ||
+      this.menuPhase === "result" ||
+      this.menuView === "range"
+    ) {
+      return
+    }
+    this.menuView = "range"
+    this.statusText.text = `Practice Range\nSelected: ${this.selectedPracticeDistanceCm} cm`
+    this.applyMenuView()
+  }
+
+  private closeMenu(): void {
+    if (this.menuPhase === "rolling" || this.menuView === "contextual") {
+      return
+    }
+    if (this.menuView === "range") {
+      this.openHome()
       return
     }
     this.menuView = "contextual"
     this.restorePhaseStatus()
     this.applyMenuView()
+  }
+
+  public setPracticeDistance(distanceCm: number): void {
+    if (!isPracticeRangeDistanceCm(distanceCm)) {
+      return
+    }
+    this.selectedPracticeDistanceCm = distanceCm
+    this.refreshRangeButtons()
+    if (this.menuView === "range") {
+      this.statusText.text = `Practice Range\nSelected: ${distanceCm} cm`
+    }
   }
 
   private applyMenuView(): void {
@@ -381,6 +449,10 @@ export class GolfPlacementUI extends BaseScriptComponent {
       contextual && this.menuPhase === "result"
     this.homeControlsObject.enabled =
       this.menuView === "home" && this.menuPhase !== "rolling"
+    this.rangeControlsObject.enabled =
+      this.menuView === "range" &&
+      this.menuPhase !== "rolling" &&
+      this.menuPhase !== "result"
     this.navigationControlsObject.enabled = this.menuPhase !== "rolling"
   }
 
@@ -389,6 +461,8 @@ export class GolfPlacementUI extends BaseScriptComponent {
       this.statusText.text = "Select Move Setup,\nthen drag the cyan handle"
     } else if (this.menuPhase === "aiming") {
       this.statusText.text = STROKE_GUIDANCE_TEXT
+    } else if (this.menuPhase === "result" && this.resultStatus) {
+      this.statusText.text = this.resultStatus
     }
   }
 
@@ -890,5 +964,53 @@ export class GolfPlacementUI extends BaseScriptComponent {
       1.2
     )
     object.createComponent(FlexItem.getTypeName())
+  }
+
+  private createRangeButton(
+    parent: SceneObject,
+    distance: PracticeRangeDistanceCm
+  ): void {
+    const object = global.scene.createSceneObject(`PracticeRange_${distance}cm_Control`)
+    object.setParent(parent)
+    const button = object.createComponent(Button.getTypeName()) as Button
+    button.setVariant({
+      theme: "SnapOS3",
+      shape: "Rectangle",
+      style: distance === this.selectedPracticeDistanceCm ? "Primary" : "Secondary",
+    })
+    button.onInitialized.add(() => {
+      button.size = new vec3(
+        RANGE_BUTTON_WIDTH_CM,
+        RANGE_BUTTON_HEIGHT_CM,
+        1
+      )
+    })
+    button.onTriggerUp.add(() => this.onPracticeDistanceSelected.invoke(distance))
+
+    const labelObject = global.scene.createSceneObject(
+      `PracticeRange_${distance}cm_Label`
+    )
+    labelObject.setParent(object)
+    labelObject.getTransform().setLocalPosition(new vec3(0, 0, 0.08))
+    const label = labelObject.createComponent("Component.Text") as Text
+    label.text = `${distance}`
+    label.size = RANGE_BUTTON_LABEL_SIZE
+    label.weight = 700
+    label.depthTest = true
+    label.textFill.color = new vec4(1, 1, 1, 1)
+    label.horizontalAlignment = HorizontalAlignment.Center
+    label.verticalAlignment = VerticalAlignment.Center
+    label.horizontalOverflow = HorizontalOverflow.Shrink
+    label.verticalOverflow = VerticalOverflow.Overflow
+    label.layoutRect = Rect.create(-2.4, 2.4, -1.5, 1.5)
+    object.createComponent(FlexItem.getTypeName())
+    this.rangeButtons.push({distance, button})
+  }
+
+  private refreshRangeButtons(): void {
+    for (const entry of this.rangeButtons) {
+      entry.button.opacity =
+        entry.distance === this.selectedPracticeDistanceCm ? 1 : 0.65
+    }
   }
 }
