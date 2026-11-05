@@ -121,6 +121,15 @@ export class GolfPlacementController extends BaseScriptComponent {
         this.handleContextualViewChanged(contextual)
       )
       this.dragInteraction.onDragUpdate.add((position) => this.handlePlacementUpdate(position))
+      this.dragInteraction.onHoverChanged.add((hovered) =>
+        this.placementUI.setPlacementHandleHovered(hovered)
+      )
+      this.dragInteraction.onDragStart.add(() =>
+        this.placementUI.setPlacementHandleActive(true)
+      )
+      this.dragInteraction.onDragEnd.add(() =>
+        this.placementUI.setPlacementHandleActive(false)
+      )
       this.aimDragInteraction.onDragUpdate.add((direction) => this.handleAimUpdate(direction))
       this.strokeInteraction.onStrokeCaptured.add((capture) =>
         this.handleVirtualStroke(capture)

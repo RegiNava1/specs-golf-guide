@@ -19,9 +19,11 @@ export class PlacementDragInteraction extends BaseScriptComponent {
   public readonly onDragStart = new Event<void>()
   public readonly onDragEnd = new Event<void>()
   public readonly onDragUpdate = new Event<vec3>()
+  public readonly onHoverChanged = new Event<boolean>()
 
   private interactable!: Interactable
   private dragging = false
+  private hovered = false
   private interactionEnabled = false
   private dragStartFloorPoint = vec3.zero()
   private dragStartRootPosition = vec3.zero()
@@ -32,6 +34,8 @@ export class PlacementDragInteraction extends BaseScriptComponent {
     this.setInteractionEnabled(false)
 
     this.createEvent("OnStartEvent").bind(() => {
+      this.interactable.onHoverEnter.add(() => this.setHovered(true))
+      this.interactable.onHoverExit.add(() => this.setHovered(false))
       this.interactable.onTriggerStart.add((event) => {
         if (!this.interactionEnabled) {
           return
@@ -87,7 +91,16 @@ export class PlacementDragInteraction extends BaseScriptComponent {
     }
     if (!enabled) {
       this.dragging = false
+      this.setHovered(false)
     }
+  }
+
+  private setHovered(hovered: boolean): void {
+    if ((hovered && !this.interactionEnabled) || this.hovered === hovered) {
+      return
+    }
+    this.hovered = hovered
+    this.onHoverChanged.invoke(hovered)
   }
 
   private ensureCollider(): void {
