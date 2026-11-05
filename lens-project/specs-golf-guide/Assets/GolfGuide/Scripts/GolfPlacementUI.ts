@@ -12,6 +12,7 @@ import Event from "SpectaclesInteractionKit.lspkg/Utils/Event"
 import type {PuttClassification} from "./GolfOutcome"
 import {
   DEFAULT_PRACTICE_RANGE_DISTANCE_CM,
+  getAdjacentPracticeRangeDistance,
   isPracticeRangeDistanceCm,
   PRACTICE_RANGE_DISTANCES_CM,
   type PracticeRangeDistanceCm,
@@ -61,6 +62,10 @@ const QUICK_MENU_DOCK_BLEND_RATE = 7
 const QUICK_MENU_SAFE_EDGE_UV = 0.035
 const QUICK_MENU_GEOMETRY_MARGIN_UV = 0.018
 const QUICK_MENU_CURRENT_DOCK_MARGIN_UV = 0.012
+const QUICK_RANGE_STRIP_WIDTH_CM = 16.8
+const QUICK_RANGE_STRIP_HEIGHT_CM = 3
+const QUICK_RANGE_STRIP_UP_CM = 4.7
+const QUICK_RANGE_LABEL_SIZE = 32
 const TEMP_PREVIEW_FORWARD_CM = 70
 const TEMP_PREVIEW_TOP_UP_CM = 16
 const TEMP_PREVIEW_LOWER_LEFT_RIGHT_CM = -4
@@ -88,6 +93,7 @@ type ScreenRect = {
 type QuickAction = {
   label: string
   invoke: () => void
+  enabled?: boolean
 }
 
 /** Runtime UIKit panel for the bounded placement workflow. */
@@ -121,6 +127,8 @@ export class GolfPlacementUI extends BaseScriptComponent {
   private quickButtonLabels: Text[] = []
   private quickCenterButton: Button | null = null
   private quickCenterLabel: Text | null = null
+  private quickRangeStripRoot: SceneObject | null = null
+  private quickRangeStripLabel: Text | null = null
   private quickActions: QuickAction[] = []
   private cameraTransform: Transform | null = null
   private cameraComponent: Camera | null = null
@@ -513,6 +521,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.selectedPracticeDistanceCm = distanceCm
     this.rangeNavigationLabel.text = `Range ${distanceCm}`
     this.refreshRangeButtons()
+    this.refreshQuickActions()
     if (this.menuView === "range") {
       this.statusText.text = `Practice Range\nSelected: ${distanceCm} cm`
     }
@@ -660,6 +669,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
     this.quickMenuRoot = root
     this.buildQuickMenuContent(root)
+    this.buildQuickRangeStrip(root)
     this.quickMenuReady = true
     this.refreshQuickActions()
     this.applyQuickMenuTransition(0)
@@ -686,6 +696,39 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.createQuickButton(content, "QuickAction_LeftBase", 0)
     this.createQuickCenterButton(content)
     this.createQuickButton(content, "QuickAction_RightBase", 1)
+  }
+
+  private buildQuickRangeStrip(host: SceneObject): void {
+    const strip = global.scene.createSceneObject("CompactRangeStrip")
+    strip.setParent(host)
+    strip
+      .getTransform()
+      .setLocalPosition(new vec3(0, QUICK_RANGE_STRIP_UP_CM, 0.1))
+    const plate = strip.createComponent(BackPlate.getTypeName()) as BackPlate
+    plate.size = new vec2(
+      QUICK_RANGE_STRIP_WIDTH_CM,
+      QUICK_RANGE_STRIP_HEIGHT_CM
+    )
+    plate.style = "dark"
+
+    const labelObject = global.scene.createSceneObject("CompactRangeStrip_Label")
+    labelObject.setParent(strip)
+    labelObject.getTransform().setLocalPosition(new vec3(0, 0, 0.5))
+    const label = labelObject.createComponent("Component.Text") as Text
+    label.text = `Range: ${this.selectedPracticeDistanceCm} cm`
+    label.size = QUICK_RANGE_LABEL_SIZE
+    label.weight = 700
+    label.depthTest = true
+    label.textFill.color = new vec4(0.25, 0.95, 1, 1)
+    label.horizontalAlignment = HorizontalAlignment.Center
+    label.verticalAlignment = VerticalAlignment.Center
+    label.horizontalOverflow = HorizontalOverflow.Shrink
+    label.verticalOverflow = VerticalOverflow.Overflow
+    label.layoutRect = Rect.create(-7.6, 7.6, -1.15, 1.15)
+
+    this.quickRangeStripRoot = strip
+    this.quickRangeStripLabel = label
+    strip.enabled = false
   }
 
   private createQuickButton(
@@ -719,7 +762,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     label.depthTest = true
     label.horizontalAlignment = HorizontalAlignment.Center
     label.verticalAlignment = VerticalAlignment.Center
-    label.horizontalOverflow = HorizontalOverflow.Overflow
+    label.horizontalOverflow = HorizontalOverflow.Shrink
     label.verticalOverflow = VerticalOverflow.Overflow
     label.layoutRect = Rect.create(
       -(QUICK_BUTTON_WIDTH_CM - 0.5) / 2,
@@ -737,11 +780,27 @@ export class GolfPlacementUI extends BaseScriptComponent {
     if (this.menuPhase === "rolling") {
       this.quickActions = []
     } else if (this.compactNavigationOpen) {
+      const previousRange = getAdjacentPracticeRangeDistance(
+        this.selectedPracticeDistanceCm,
+        -1
+      )
+      const nextRange = getAdjacentPracticeRangeDistance(
+        this.selectedPracticeDistanceCm,
+        1
+      )
       this.quickActions =
         this.menuView === "range"
           ? [
-              {label: "Prev", invoke: () => this.selectAdjacentRange(-1)},
-              {label: "Next", invoke: () => this.selectAdjacentRange(1)},
+              {
+                label: previousRange === null ? "Min 25" : `− ${previousRange}`,
+                invoke: () => this.selectAdjacentRange(-1),
+                enabled: previousRange !== null,
+              },
+              {
+                label: nextRange === null ? "Max 150" : `+ ${nextRange}`,
+                invoke: () => this.selectAdjacentRange(1),
+                enabled: nextRange !== null,
+              },
             ]
           : [
               {label: "Back", invoke: () => this.navigateCompactBack()},
@@ -773,6 +832,10 @@ export class GolfPlacementUI extends BaseScriptComponent {
       this.quickButtonLabels[index].text = action?.label ?? ""
       this.quickButtons[index].getSceneObject().enabled =
         action !== undefined && !this.quickMenuGeometryCollapsed
+      this.quickButtonLabels[index].textFill.color =
+        action?.enabled === false
+          ? new vec4(0.62, 0.66, 0.7, 1)
+          : new vec4(1, 1, 1, 1)
     }
     if (this.quickCenterLabel && this.quickCenterButton) {
       this.quickCenterLabel.text = this.quickMenuGeometryCollapsed
@@ -786,6 +849,20 @@ export class GolfPlacementUI extends BaseScriptComponent {
           : "Menu"
       this.quickCenterButton.getSceneObject().enabled = this.menuPhase !== "rolling"
     }
+    this.refreshQuickRangeStrip()
+  }
+
+  private refreshQuickRangeStrip(): void {
+    if (!this.quickRangeStripRoot || !this.quickRangeStripLabel) {
+      return
+    }
+    this.quickRangeStripLabel.text = `Range: ${this.selectedPracticeDistanceCm} cm`
+    this.quickRangeStripRoot.enabled =
+      this.quickMenuActive &&
+      !this.quickMenuGeometryCollapsed &&
+      this.compactNavigationOpen &&
+      this.menuView === "range" &&
+      this.menuPhase !== "rolling"
   }
 
   private createQuickCenterButton(parent: SceneObject): void {
@@ -862,15 +939,14 @@ export class GolfPlacementUI extends BaseScriptComponent {
   }
 
   private selectAdjacentRange(direction: -1 | 1): void {
-    const currentIndex = PRACTICE_RANGE_DISTANCES_CM.indexOf(
-      this.selectedPracticeDistanceCm
+    const adjacent = getAdjacentPracticeRangeDistance(
+      this.selectedPracticeDistanceCm,
+      direction
     )
-    const nextIndex =
-      (currentIndex + direction + PRACTICE_RANGE_DISTANCES_CM.length) %
-      PRACTICE_RANGE_DISTANCES_CM.length
-    this.onPracticeDistanceSelected.invoke(
-      PRACTICE_RANGE_DISTANCES_CM[nextIndex]
-    )
+    if (adjacent === null) {
+      return
+    }
+    this.onPracticeDistanceSelected.invoke(adjacent)
   }
 
   private triggerQuickAction(index: number): void {
@@ -883,7 +959,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     }
 
     const action = this.quickActions[index]
-    if (!action) {
+    if (!action || action.enabled === false) {
       return
     }
 
@@ -1122,11 +1198,37 @@ export class GolfPlacementUI extends BaseScriptComponent {
     if (!this.cameraTransform || !this.cameraComponent) {
       return null
     }
-    return this.getCameraLocalScreenRect(
-      this.getQuickMenuDockPosition(dock),
+    const dockPosition = this.getQuickMenuDockPosition(dock)
+    const baseRect = this.getCameraLocalScreenRect(
+      dockPosition,
       QUICK_MENU_WIDTH_CM,
       QUICK_MENU_HEIGHT_CM,
       margin
+    )
+    if (!this.shouldShowQuickRangeStrip()) {
+      return baseRect
+    }
+    const stripRect = this.getCameraLocalScreenRect(
+      dockPosition.add(new vec3(0, QUICK_RANGE_STRIP_UP_CM, 0)),
+      QUICK_RANGE_STRIP_WIDTH_CM,
+      QUICK_RANGE_STRIP_HEIGHT_CM,
+      margin
+    )
+    return {
+      left: Math.min(baseRect.left, stripRect.left),
+      right: Math.max(baseRect.right, stripRect.right),
+      top: Math.min(baseRect.top, stripRect.top),
+      bottom: Math.max(baseRect.bottom, stripRect.bottom),
+    }
+  }
+
+  private shouldShowQuickRangeStrip(): boolean {
+    return (
+      this.quickMenuActive &&
+      !this.quickMenuGeometryCollapsed &&
+      this.compactNavigationOpen &&
+      this.menuView === "range" &&
+      this.menuPhase !== "rolling"
     )
   }
 
@@ -1341,6 +1443,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
     if (active) {
       this.quickMenuRoot.enabled = true
+      this.refreshQuickRangeStrip()
     } else if (changed) {
       this.compactNavigationOpen = false
       this.refreshQuickActions()
@@ -1370,8 +1473,10 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
     const scale = 0.92 + 0.08 * progress
     this.quickMenuContent.getTransform().setLocalScale(new vec3(scale, scale, 1))
-    for (const button of this.quickButtons) {
-      button.opacity = progress
+    for (let index = 0; index < this.quickButtons.length; index += 1) {
+      const action = this.quickActions[index]
+      this.quickButtons[index].opacity =
+        progress * (action?.enabled === false ? 0.45 : 1)
     }
     if (this.quickCenterButton) {
       this.quickCenterButton.opacity = progress
