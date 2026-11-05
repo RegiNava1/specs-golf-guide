@@ -21,6 +21,13 @@ const STATUS_TEXT_WEIGHT = 600
 const STATUS_PANEL_WIDTH_CM = 38
 const STATUS_PANEL_HEIGHT_CM = 5.2
 const STATUS_PANEL_Y_CM = -7
+const STROKE_GUIDANCE_TEXT =
+  "Drag the cyan ring back, then stroke forward through the ball."
+const STROKE_LABEL_TEXT = "Stroke Practice"
+const STROKE_LABEL_SIZE = 72
+const STROKE_LABEL_WEIGHT = 700
+const STROKE_LABEL_RIGHT_CM = 11.5
+const STROKE_LABEL_FLOOR_OFFSET_CM = -5.45
 const QUICK_MENU_WIDTH_CM = 15.5
 const QUICK_MENU_HEIGHT_CM = 6.2
 const QUICK_BUTTON_WIDTH_CM = 6
@@ -131,7 +138,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.createButton(
       this.aimControlsObject,
       "PracticePutt_Control",
-      "Practice Putt",
+      "Quick Putt",
       "Secondary",
       () => this.onPracticePutt.invoke()
     )
@@ -200,6 +207,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.statusText.verticalOverflow = VerticalOverflow.Overflow
     this.statusText.layoutRect = Rect.create(-18, 18, -2.1, 2.1)
 
+    this.createStrokePracticeLabel()
     this.createAdaptiveQuickMenu()
     this.createEvent("UpdateEvent").bind(() => this.updateAdaptiveQuickMenu())
   }
@@ -212,7 +220,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   public showConfirmed(): void {
     this.menuPhase = "aiming"
-    this.statusText.text = "Placement confirmed - select Adjust Aim"
+    this.statusText.text = STROKE_GUIDANCE_TEXT
     this.placementControlsObject.enabled = false
     this.adjustButton.opacity = 1
     this.aimControlsObject.enabled = true
@@ -221,7 +229,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   public showAimMode(): void {
     this.menuPhase = "aiming"
-    this.statusText.text = "Drag the cyan aim handle left or right"
+    this.statusText.text = STROKE_GUIDANCE_TEXT
     this.refreshQuickActions()
   }
 
@@ -245,7 +253,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   public showRetryReady(): void {
     this.menuPhase = "aiming"
-    this.statusText.text = "Aim preserved - adjust or putt again"
+    this.statusText.text = STROKE_GUIDANCE_TEXT
     this.placementControlsObject.enabled = false
     this.resultControlsObject.enabled = false
     this.adjustButton.opacity = 1
@@ -260,6 +268,43 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.aimControlsObject.enabled = false
     this.placementControlsObject.enabled = true
     this.refreshQuickActions()
+  }
+
+  private createStrokePracticeLabel(): void {
+    const strokeHandle = this.findSceneObjectByName("StrokeHandle_Anchor")
+    if (!strokeHandle) {
+      console.warn(
+        "[GolfPlacementUI] Stroke Practice label unavailable: StrokeHandle_Anchor not found"
+      )
+      return
+    }
+
+    const labelRoot = global.scene.createSceneObject("StrokePractice_Label")
+    labelRoot.setParent(strokeHandle)
+    labelRoot
+      .getTransform()
+      .setLocalPosition(
+        new vec3(
+          STROKE_LABEL_RIGHT_CM,
+          STROKE_LABEL_FLOOR_OFFSET_CM,
+          0
+        )
+      )
+    labelRoot
+      .getTransform()
+      .setLocalRotation(quat.fromEulerAngles(MathUtils.DegToRad * -90, 0, 0))
+
+    const label = labelRoot.createComponent("Component.Text") as Text
+    label.text = STROKE_LABEL_TEXT
+    label.size = STROKE_LABEL_SIZE
+    ;(label as Text & {weight?: number}).weight = STROKE_LABEL_WEIGHT
+    label.depthTest = true
+    label.textFill.color = new vec4(0.15, 0.95, 1, 1)
+    label.horizontalAlignment = HorizontalAlignment.Center
+    label.verticalAlignment = VerticalAlignment.Center
+    label.horizontalOverflow = HorizontalOverflow.Shrink
+    label.verticalOverflow = VerticalOverflow.Overflow
+    label.layoutRect = Rect.create(-9, 9, -1.6, 1.6)
   }
 
   private createAdaptiveQuickMenu(): void {
@@ -534,6 +579,30 @@ export class GolfPlacementUI extends BaseScriptComponent {
     const visit = (object: SceneObject): SceneObject | null => {
       const camera = object.getComponent("Component.Camera")
       if (camera && object.isEnabledInHierarchy) {
+        return object
+      }
+
+      for (let index = 0; index < object.getChildrenCount(); index += 1) {
+        const result = visit(object.getChild(index))
+        if (result) {
+          return result
+        }
+      }
+      return null
+    }
+
+    for (let index = 0; index < global.scene.getRootObjectsCount(); index += 1) {
+      const result = visit(global.scene.getRootObject(index))
+      if (result) {
+        return result
+      }
+    }
+    return null
+  }
+
+  private findSceneObjectByName(name: string): SceneObject | null {
+    const visit = (object: SceneObject): SceneObject | null => {
+      if (object.name === name) {
         return object
       }
 
