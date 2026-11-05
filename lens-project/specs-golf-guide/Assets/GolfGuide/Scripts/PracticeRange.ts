@@ -1,24 +1,44 @@
-export const PRACTICE_RANGE_DISTANCES_CM = [25, 50, 75, 100, 125, 150] as const
+export const CENTIMETERS_PER_FOOT = 30.48
 
-export type PracticeRangeDistanceCm =
-  (typeof PRACTICE_RANGE_DISTANCES_CM)[number]
+export const PRACTICE_RANGE_DISTANCES_FT = [5, 10, 15, 20, 25] as const
 
-export const DEFAULT_PRACTICE_RANGE_DISTANCE_CM: PracticeRangeDistanceCm = 150
+export type PracticeRangeDistanceFt =
+  (typeof PRACTICE_RANGE_DISTANCES_FT)[number]
 
-export function isPracticeRangeDistanceCm(
+export const DEFAULT_PRACTICE_RANGE_DISTANCE_FT: PracticeRangeDistanceFt = 15
+
+export type PracticeRangeLifecycleAction = "retry-shot" | "reset-all"
+
+export function practiceRangeFeetToCentimeters(distanceFt: number): number {
+  return distanceFt * CENTIMETERS_PER_FOOT
+}
+
+export function isPracticeRangeDistanceFt(
   value: number
-): value is PracticeRangeDistanceCm {
-  return PRACTICE_RANGE_DISTANCES_CM.some((distance) => distance === value)
+): value is PracticeRangeDistanceFt {
+  return PRACTICE_RANGE_DISTANCES_FT.some((distance) => distance === value)
 }
 
 export function getAdjacentPracticeRangeDistance(
   current: number,
   direction: -1 | 1
-): PracticeRangeDistanceCm | null {
-  if (!isPracticeRangeDistanceCm(current)) {
+): PracticeRangeDistanceFt | null {
+  if (!isPracticeRangeDistanceFt(current)) {
     return null
   }
-  const currentIndex = PRACTICE_RANGE_DISTANCES_CM.indexOf(current)
-  const adjacent = PRACTICE_RANGE_DISTANCES_CM[currentIndex + direction]
+  const currentIndex = PRACTICE_RANGE_DISTANCES_FT.indexOf(current)
+  const adjacent = PRACTICE_RANGE_DISTANCES_FT[currentIndex + direction]
   return adjacent ?? null
+}
+
+export function resolvePracticeRangeLifecycleDistance(
+  current: number,
+  action: PracticeRangeLifecycleAction
+): PracticeRangeDistanceFt {
+  if (action === "reset-all") {
+    return DEFAULT_PRACTICE_RANGE_DISTANCE_FT
+  }
+  return isPracticeRangeDistanceFt(current)
+    ? current
+    : DEFAULT_PRACTICE_RANGE_DISTANCE_FT
 }

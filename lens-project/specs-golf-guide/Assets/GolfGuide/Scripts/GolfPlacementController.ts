@@ -13,9 +13,11 @@ import {
 } from "./GhostCoach"
 import {PlacementDragInteraction} from "./PlacementDragInteraction"
 import {
-  DEFAULT_PRACTICE_RANGE_DISTANCE_CM,
-  isPracticeRangeDistanceCm,
-  type PracticeRangeDistanceCm,
+  DEFAULT_PRACTICE_RANGE_DISTANCE_FT,
+  isPracticeRangeDistanceFt,
+  practiceRangeFeetToCentimeters,
+  resolvePracticeRangeLifecycleDistance,
+  type PracticeRangeDistanceFt,
 } from "./PracticeRange"
 import {
   VirtualStrokeInteraction,
@@ -83,8 +85,9 @@ export class GolfPlacementController extends BaseScriptComponent {
   private initialAimHandleLocalPosition = vec3.zero()
   private initialPlacementHandleLocalPosition = vec3.zero()
   private initialStrokeHandleLocalPosition = vec3.zero()
-  private selectedPracticeDistanceCm: PracticeRangeDistanceCm =
-    DEFAULT_PRACTICE_RANGE_DISTANCE_CM
+  private selectedPracticeDistanceFt: PracticeRangeDistanceFt =
+    DEFAULT_PRACTICE_RANGE_DISTANCE_FT
+  private authoredRangeDistanceCm = 150
   private fixedRangeDirectionLocal = new vec3(0, 0, -1)
   private guideDirectionLocal = new vec3(0, 0, -1)
   private aimLineVisual: SceneObject | null = null
@@ -114,8 +117,8 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.placementUI.onPracticePutt.add(() => this.startPracticePutt())
       this.placementUI.onTryAgain.add(() => this.tryAgain())
       this.placementUI.onResetSetup.add(() => this.resetSetup())
-      this.placementUI.onPracticeDistanceSelected.add((distanceCm) =>
-        this.selectPracticeDistance(distanceCm)
+      this.placementUI.onPracticeDistanceSelected.add((distanceFt) =>
+        this.selectPracticeDistance(distanceFt)
       )
       this.placementUI.onContextualViewChanged.add((contextual) =>
         this.handleContextualViewChanged(contextual)
@@ -134,7 +137,7 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.strokeInteraction.onStrokeCaptured.add((capture) =>
         this.handleVirtualStroke(capture)
       )
-      this.placementUI.setPracticeDistance(this.selectedPracticeDistanceCm)
+      this.applyPracticeDistance(this.selectedPracticeDistanceFt)
       print("[GolfPlacement] ready: initial-placement")
     })
   }
@@ -235,25 +238,27 @@ export class GolfPlacementController extends BaseScriptComponent {
     )
   }
 
-  private selectPracticeDistance(distanceCm: number): void {
+  private selectPracticeDistance(distanceFt: number): void {
     if (
       this.phase === "rolling" ||
       this.phase === "result" ||
-      !isPracticeRangeDistanceCm(distanceCm)
+      !isPracticeRangeDistanceFt(distanceFt)
     ) {
       return
     }
 
-    this.applyPracticeDistance(distanceCm)
+    this.applyPracticeDistance(distanceFt)
+    const distanceCm = practiceRangeFeetToCentimeters(distanceFt)
     console.log(
-      `[GolfRange] action=SELECT_DISTANCE phase=${this.phase} distanceCm=${distanceCm} target=${this.formatPosition(
+      `[GolfRange] action=SELECT_DISTANCE phase=${this.phase} distanceFt=${distanceFt} distanceCm=${distanceCm.toFixed(2)} target=${this.formatPosition(
         this.targetAnchor.getTransform().getWorldPosition()
-      )} aimGuideCm=${distanceCm}`
+      )} aimGuideCm=${distanceCm.toFixed(2)}`
     )
   }
 
-  private applyPracticeDistance(distanceCm: PracticeRangeDistanceCm): void {
-    this.selectedPracticeDistanceCm = distanceCm
+  private applyPracticeDistance(distanceFt: PracticeRangeDistanceFt): void {
+    this.selectedPracticeDistanceFt = distanceFt
+    const distanceCm = practiceRangeFeetToCentimeters(distanceFt)
 
     const targetLocalPosition = this.initialAimLineLocalPosition.add(
       this.fixedRangeDirectionLocal.uniformScale(distanceCm)
@@ -263,7 +268,7 @@ export class GolfPlacementController extends BaseScriptComponent {
     if (this.aimLineVisual) {
       const linePosition = this.initialAimLineVisualLocalPosition
         .sub(this.guideDirectionLocal.uniformScale(
-          DEFAULT_PRACTICE_RANGE_DISTANCE_CM / 2
+          this.authoredRangeDistanceCm / 2
         ))
         .add(this.guideDirectionLocal.uniformScale(distanceCm / 2))
       const lineScale = this.initialAimLineVisualLocalScale
@@ -273,7 +278,7 @@ export class GolfPlacementController extends BaseScriptComponent {
           lineScale.x,
           lineScale.y,
           lineScale.z *
-            (distanceCm / DEFAULT_PRACTICE_RANGE_DISTANCE_CM)
+            (distanceCm / this.authoredRangeDistanceCm)
         )
       )
     }
@@ -281,7 +286,7 @@ export class GolfPlacementController extends BaseScriptComponent {
     if (this.aimArrowVisual) {
       const arrowPosition = this.initialAimArrowLocalPosition
         .sub(this.guideDirectionLocal.uniformScale(
-          DEFAULT_PRACTICE_RANGE_DISTANCE_CM
+          this.authoredRangeDistanceCm
         ))
         .add(this.guideDirectionLocal.uniformScale(distanceCm))
       this.aimArrowVisual.getTransform().setLocalPosition(arrowPosition)
@@ -289,7 +294,7 @@ export class GolfPlacementController extends BaseScriptComponent {
 
     const aimHandlePosition = this.initialAimHandleLocalPosition
       .sub(this.guideDirectionLocal.uniformScale(
-        DEFAULT_PRACTICE_RANGE_DISTANCE_CM
+        this.authoredRangeDistanceCm
       ))
       .add(this.guideDirectionLocal.uniformScale(distanceCm))
     this.aimHandle.getTransform().setLocalPosition(aimHandlePosition)
@@ -298,7 +303,7 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.targetPositionAtAimStart =
         this.targetAnchor.getTransform().getWorldPosition()
     }
-    this.placementUI.setPracticeDistance(distanceCm)
+    this.placementUI.setPracticeDistance(distanceFt)
   }
 
   private startPracticePutt(): void {
@@ -313,10 +318,13 @@ export class GolfPlacementController extends BaseScriptComponent {
 
     const direction = planar.normalize()
     const startPosition = this.ballVisual.getTransform().getWorldPosition()
+    const selectedPracticeDistanceCm = practiceRangeFeetToCentimeters(
+      this.selectedPracticeDistanceFt
+    )
     const endpoint = new vec3(
-      startPosition.x + direction.x * this.selectedPracticeDistanceCm,
+      startPosition.x + direction.x * selectedPracticeDistanceCm,
       startPosition.y,
-      startPosition.z + direction.z * this.selectedPracticeDistanceCm
+      startPosition.z + direction.z * selectedPracticeDistanceCm
     )
     this.beginRoll(endpoint, direction, "practice-putt", 1)
   }
@@ -329,7 +337,9 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.pendingGhostCoachInput = {
       aimDeviation: capture.outcome.aimDeviation,
       distanceFeedback: capture.outcome.distanceFeedback,
-      selectedDistanceCm: this.selectedPracticeDistanceCm,
+      selectedDistanceCm: practiceRangeFeetToCentimeters(
+        this.selectedPracticeDistanceFt
+      ),
       travelDistanceCm: capture.outcome.travelDistanceCm,
     }
 
@@ -457,6 +467,10 @@ export class GolfPlacementController extends BaseScriptComponent {
     }
 
     this.ballVisual.getTransform().setWorldPosition(this.rollStartPosition)
+    this.selectedPracticeDistanceFt = resolvePracticeRangeLifecycleDistance(
+      this.selectedPracticeDistanceFt,
+      "retry-shot"
+    )
     this.phase = "aiming"
     this.aimAdjustmentActive = false
     this.rollElapsedSeconds = 0
@@ -513,7 +527,12 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.strokeHandle
       .getTransform()
       .setLocalPosition(this.initialStrokeHandleLocalPosition)
-    this.applyPracticeDistance(DEFAULT_PRACTICE_RANGE_DISTANCE_CM)
+    this.applyPracticeDistance(
+      resolvePracticeRangeLifecycleDistance(
+        this.selectedPracticeDistanceFt,
+        "reset-all"
+      )
+    )
 
     this.phase = "initial-placement"
     this.aimAdjustmentActive = false
@@ -545,7 +564,9 @@ export class GolfPlacementController extends BaseScriptComponent {
         this.ballVisual.getTransform().getWorldPosition()
       )} target=${this.formatPosition(
         this.targetAnchor.getTransform().getWorldPosition()
-      )} aim=(0.0000,-1.0000) distanceCm=${this.selectedPracticeDistanceCm} feedbackCleared=true`
+      )} aim=(0.0000,-1.0000) distanceFt=${this.selectedPracticeDistanceFt} distanceCm=${practiceRangeFeetToCentimeters(
+        this.selectedPracticeDistanceFt
+      ).toFixed(2)} feedbackCleared=true`
     )
   }
 
@@ -571,6 +592,7 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.initialAimLineLocalPosition
     )
     if (fixedRange.length > 0.0001) {
+      this.authoredRangeDistanceCm = fixedRange.length
       this.fixedRangeDirectionLocal = fixedRange.normalize()
     }
 

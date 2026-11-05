@@ -11,11 +11,11 @@ import {
 import Event from "SpectaclesInteractionKit.lspkg/Utils/Event"
 import type {PuttClassification} from "./GolfOutcome"
 import {
-  DEFAULT_PRACTICE_RANGE_DISTANCE_CM,
+  DEFAULT_PRACTICE_RANGE_DISTANCE_FT,
   getAdjacentPracticeRangeDistance,
-  isPracticeRangeDistanceCm,
-  PRACTICE_RANGE_DISTANCES_CM,
-  type PracticeRangeDistanceCm,
+  isPracticeRangeDistanceFt,
+  PRACTICE_RANGE_DISTANCES_FT,
+  type PracticeRangeDistanceFt,
 } from "./PracticeRange"
 
 const PANEL_WIDTH_CM = 40
@@ -167,9 +167,9 @@ export class GolfPlacementUI extends BaseScriptComponent {
   )
   private quickMenuGeometryCollapsed = false
   private quickMenuDockDiagnosticsPrinted = false
-  private selectedPracticeDistanceCm: PracticeRangeDistanceCm =
-    DEFAULT_PRACTICE_RANGE_DISTANCE_CM
-  private rangeButtons: Array<{distance: PracticeRangeDistanceCm; button: Button}> = []
+  private selectedPracticeDistanceFt: PracticeRangeDistanceFt =
+    DEFAULT_PRACTICE_RANGE_DISTANCE_FT
+  private rangeButtons: Array<{distance: PracticeRangeDistanceFt; button: Button}> = []
   private resultStatus: PuttClassification | null = null
 
   onAwake(): void {
@@ -328,7 +328,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     rangeLayout.justifyContent = FlexJustify.Center
     rangeLayout.alignItems = FlexAlign.Center
     rangeLayout.columnGap = 0.35
-    for (const distance of PRACTICE_RANGE_DISTANCES_CM) {
+    for (const distance of PRACTICE_RANGE_DISTANCES_FT) {
       this.createRangeButton(this.rangeControlsObject, distance)
     }
     this.rangeControlsObject.enabled = false
@@ -359,7 +359,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     const rangeNavigation = this.createNavigationButton(
       this.navigationControlsObject,
       "RangeNavigation_Control",
-      `Range ${this.selectedPracticeDistanceCm}`,
+      `Range ${this.selectedPracticeDistanceFt} ft`,
       () => this.openRange()
     )
     this.rangeNavigationObject = rangeNavigation.object
@@ -494,7 +494,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
       return
     }
     this.menuView = "range"
-    this.statusText.text = `Practice Range\nSelected: ${this.selectedPracticeDistanceCm} cm`
+    this.statusText.text = `Practice Range\nSelected: ${this.selectedPracticeDistanceFt} ft`
     this.applyMenuView()
     this.refreshQuickActions()
   }
@@ -514,16 +514,16 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.refreshQuickActions()
   }
 
-  public setPracticeDistance(distanceCm: number): void {
-    if (!isPracticeRangeDistanceCm(distanceCm)) {
+  public setPracticeDistance(distanceFt: number): void {
+    if (!isPracticeRangeDistanceFt(distanceFt)) {
       return
     }
-    this.selectedPracticeDistanceCm = distanceCm
-    this.rangeNavigationLabel.text = `Range ${distanceCm}`
+    this.selectedPracticeDistanceFt = distanceFt
+    this.rangeNavigationLabel.text = `Range ${distanceFt} ft`
     this.refreshRangeButtons()
     this.refreshQuickActions()
     if (this.menuView === "range") {
-      this.statusText.text = `Practice Range\nSelected: ${distanceCm} cm`
+      this.statusText.text = `Practice Range\nSelected: ${distanceFt} ft`
     }
   }
 
@@ -715,7 +715,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     labelObject.setParent(strip)
     labelObject.getTransform().setLocalPosition(new vec3(0, 0, 0.5))
     const label = labelObject.createComponent("Component.Text") as Text
-    label.text = `Range: ${this.selectedPracticeDistanceCm} cm`
+    label.text = `${this.selectedPracticeDistanceFt} ft`
     label.size = QUICK_RANGE_LABEL_SIZE
     label.weight = 700
     label.depthTest = true
@@ -781,23 +781,23 @@ export class GolfPlacementUI extends BaseScriptComponent {
       this.quickActions = []
     } else if (this.compactNavigationOpen) {
       const previousRange = getAdjacentPracticeRangeDistance(
-        this.selectedPracticeDistanceCm,
+        this.selectedPracticeDistanceFt,
         -1
       )
       const nextRange = getAdjacentPracticeRangeDistance(
-        this.selectedPracticeDistanceCm,
+        this.selectedPracticeDistanceFt,
         1
       )
       this.quickActions =
         this.menuView === "range"
           ? [
               {
-                label: previousRange === null ? "Min 25" : `− ${previousRange}`,
+                label: "−",
                 invoke: () => this.selectAdjacentRange(-1),
                 enabled: previousRange !== null,
               },
               {
-                label: nextRange === null ? "Max 150" : `+ ${nextRange}`,
+                label: "+",
                 invoke: () => this.selectAdjacentRange(1),
                 enabled: nextRange !== null,
               },
@@ -856,7 +856,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     if (!this.quickRangeStripRoot || !this.quickRangeStripLabel) {
       return
     }
-    this.quickRangeStripLabel.text = `Range: ${this.selectedPracticeDistanceCm} cm`
+    this.quickRangeStripLabel.text = `${this.selectedPracticeDistanceFt} ft`
     this.quickRangeStripRoot.enabled =
       this.quickMenuActive &&
       !this.quickMenuGeometryCollapsed &&
@@ -940,7 +940,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   private selectAdjacentRange(direction: -1 | 1): void {
     const adjacent = getAdjacentPracticeRangeDistance(
-      this.selectedPracticeDistanceCm,
+      this.selectedPracticeDistanceFt,
       direction
     )
     if (adjacent === null) {
@@ -1684,15 +1684,15 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   private createRangeButton(
     parent: SceneObject,
-    distance: PracticeRangeDistanceCm
+    distance: PracticeRangeDistanceFt
   ): void {
-    const object = global.scene.createSceneObject(`PracticeRange_${distance}cm_Control`)
+    const object = global.scene.createSceneObject(`PracticeRange_${distance}ft_Control`)
     object.setParent(parent)
     const button = object.createComponent(Button.getTypeName()) as Button
     button.setVariant({
       theme: "SnapOS3",
       shape: "Rectangle",
-      style: distance === this.selectedPracticeDistanceCm ? "Primary" : "Secondary",
+      style: distance === this.selectedPracticeDistanceFt ? "Primary" : "Secondary",
     })
     button.onInitialized.add(() => {
       button.size = new vec3(
@@ -1704,12 +1704,12 @@ export class GolfPlacementUI extends BaseScriptComponent {
     button.onTriggerUp.add(() => this.onPracticeDistanceSelected.invoke(distance))
 
     const labelObject = global.scene.createSceneObject(
-      `PracticeRange_${distance}cm_Label`
+      `PracticeRange_${distance}ft_Label`
     )
     labelObject.setParent(object)
     labelObject.getTransform().setLocalPosition(new vec3(0, 0, 0.08))
     const label = labelObject.createComponent("Component.Text") as Text
-    label.text = `${distance}`
+    label.text = `${distance} ft`
     label.size = RANGE_BUTTON_LABEL_SIZE
     label.weight = 700
     label.depthTest = true
@@ -1726,7 +1726,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
   private refreshRangeButtons(): void {
     for (const entry of this.rangeButtons) {
       entry.button.opacity =
-        entry.distance === this.selectedPracticeDistanceCm ? 1 : 0.65
+        entry.distance === this.selectedPracticeDistanceFt ? 1 : 0.65
     }
   }
 }
