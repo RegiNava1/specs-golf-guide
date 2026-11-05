@@ -12,7 +12,7 @@ import Event from "SpectaclesInteractionKit.lspkg/Utils/Event"
 import type {PuttClassification} from "./GolfOutcome"
 
 const PANEL_WIDTH_CM = 40
-const PANEL_HEIGHT_CM = 8
+const PANEL_HEIGHT_CM = 13
 const BUTTON_WIDTH_CM = 17.8
 const BUTTON_HEIGHT_CM = 5.6
 const FULL_BUTTON_LABEL_SIZE = 72
@@ -21,7 +21,12 @@ const STATUS_TEXT_SIZE = 72
 const STATUS_TEXT_WEIGHT = 700
 const STATUS_PANEL_WIDTH_CM = 38
 const STATUS_PANEL_HEIGHT_CM = 6.8
-const STATUS_PANEL_Y_CM = -7.8
+const STATUS_PANEL_Y_CM = -10.5
+const ACTION_ROW_Y_CM = -1.8
+const NAV_ROW_Y_CM = 3.6
+const NAV_BUTTON_WIDTH_CM = 8.5
+const NAV_BUTTON_HEIGHT_CM = 3
+const NAV_BUTTON_LABEL_SIZE = 38
 const STROKE_GUIDANCE_TEXT =
   "Drag the cyan ring back,\nthen stroke forward through the ball."
 const STROKE_LABEL_TEXT = "Stroke Practice"
@@ -41,8 +46,14 @@ const QUICK_MENU_EXIT_DOT = 0.906 // About 25 degrees from the view center.
 const QUICK_MENU_ENTER_DELAY_SECONDS = 0.25
 const QUICK_MENU_EXIT_DELAY_SECONDS = 0.35
 const QUICK_MENU_ACTION_COOLDOWN_SECONDS = 0.3
+const TEMP_PREVIEW_FORWARD_CM = 70
+const TEMP_PREVIEW_UP_CM = -7
+const TEMP_PREVIEW_WIDTH_CM = 24
+const TEMP_PREVIEW_HEIGHT_CM = 5.5
+const TEMP_PREVIEW_SHOW_DOT = 0.72
 
 type MenuPhase = "placement" | "aiming" | "rolling" | "result"
+type MenuView = "contextual" | "home"
 
 type QuickAction = {
   label: string
@@ -62,6 +73,8 @@ export class GolfPlacementUI extends BaseScriptComponent {
   private placementControlsObject!: SceneObject
   private aimControlsObject!: SceneObject
   private resultControlsObject!: SceneObject
+  private homeControlsObject!: SceneObject
+  private navigationControlsObject!: SceneObject
   private moveButtonObject!: SceneObject
   private confirmButtonObject!: SceneObject
   private adjustButton!: Button
@@ -73,7 +86,10 @@ export class GolfPlacementUI extends BaseScriptComponent {
   private quickButtonLabels: Text[] = []
   private quickActions: QuickAction[] = []
   private cameraTransform: Transform | null = null
+  private setupTransform: Transform | null = null
+  private temporaryPreviewRoot: SceneObject | null = null
   private menuPhase: MenuPhase = "placement"
+  private menuView: MenuView = "contextual"
   private quickMenuReady = false
   private quickMenuActive = false
   private quickMenuTransition = 0
@@ -87,13 +103,15 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
     this.placementControlsObject = global.scene.createSceneObject("PlacementControls_Content")
     this.placementControlsObject.setParent(this.sceneObject)
-    this.placementControlsObject.getTransform().setLocalPosition(new vec3(0, 0, 0.6))
+    this.placementControlsObject
+      .getTransform()
+      .setLocalPosition(new vec3(0, ACTION_ROW_Y_CM, 0.6))
 
     const layout = this.placementControlsObject.createComponent(
       FlexLayout.getTypeName()
     ) as FlexLayout
     layout.width = PANEL_WIDTH_CM - 3
-    layout.height = PANEL_HEIGHT_CM - 2
+    layout.height = BUTTON_HEIGHT_CM
     layout.direction = FlexDirection.Row
     layout.justifyContent = FlexJustify.Center
     layout.alignItems = FlexAlign.Center
@@ -116,13 +134,15 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
     this.aimControlsObject = global.scene.createSceneObject("AimControls_Content")
     this.aimControlsObject.setParent(this.sceneObject)
-    this.aimControlsObject.getTransform().setLocalPosition(new vec3(0, 0, 0.7))
+    this.aimControlsObject
+      .getTransform()
+      .setLocalPosition(new vec3(0, ACTION_ROW_Y_CM, 0.7))
 
     const aimLayout = this.aimControlsObject.createComponent(
       FlexLayout.getTypeName()
     ) as FlexLayout
     aimLayout.width = PANEL_WIDTH_CM - 3
-    aimLayout.height = PANEL_HEIGHT_CM - 2
+    aimLayout.height = BUTTON_HEIGHT_CM
     aimLayout.direction = FlexDirection.Row
     aimLayout.justifyContent = FlexJustify.Center
     aimLayout.alignItems = FlexAlign.Center
@@ -150,13 +170,15 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
     this.resultControlsObject = global.scene.createSceneObject("ResultControls_Content")
     this.resultControlsObject.setParent(this.sceneObject)
-    this.resultControlsObject.getTransform().setLocalPosition(new vec3(0, 0, 0.8))
+    this.resultControlsObject
+      .getTransform()
+      .setLocalPosition(new vec3(0, ACTION_ROW_Y_CM, 0.8))
 
     const resultLayout = this.resultControlsObject.createComponent(
       FlexLayout.getTypeName()
     ) as FlexLayout
     resultLayout.width = PANEL_WIDTH_CM - 3
-    resultLayout.height = PANEL_HEIGHT_CM - 2
+    resultLayout.height = BUTTON_HEIGHT_CM
     resultLayout.direction = FlexDirection.Row
     resultLayout.justifyContent = FlexJustify.Center
     resultLayout.alignItems = FlexAlign.Center
@@ -184,6 +206,64 @@ export class GolfPlacementUI extends BaseScriptComponent {
       this.resultControlsObject.enabled = false
     })
 
+    this.homeControlsObject = global.scene.createSceneObject("HomeControls_Content")
+    this.homeControlsObject.setParent(this.sceneObject)
+    this.homeControlsObject
+      .getTransform()
+      .setLocalPosition(new vec3(0, ACTION_ROW_Y_CM, 0.9))
+    const homeLayout = this.homeControlsObject.createComponent(
+      FlexLayout.getTypeName()
+    ) as FlexLayout
+    homeLayout.width = PANEL_WIDTH_CM - 3
+    homeLayout.height = BUTTON_HEIGHT_CM
+    homeLayout.direction = FlexDirection.Row
+    homeLayout.justifyContent = FlexJustify.Center
+    homeLayout.alignItems = FlexAlign.Center
+    homeLayout.columnGap = 1.2
+    this.createButton(
+      this.homeControlsObject,
+      "ResumePractice_Control",
+      "Resume Practice",
+      "Primary",
+      () => this.closeHome()
+    )
+    this.createButton(
+      this.homeControlsObject,
+      "HomeResetAll_Control",
+      "Reset All",
+      "Secondary",
+      () => this.onResetSetup.invoke()
+    )
+    this.homeControlsObject.enabled = false
+
+    this.navigationControlsObject = global.scene.createSceneObject(
+      "MenuNavigation_Content"
+    )
+    this.navigationControlsObject.setParent(this.sceneObject)
+    this.navigationControlsObject
+      .getTransform()
+      .setLocalPosition(new vec3(0, NAV_ROW_Y_CM, 1))
+    const navigationLayout = this.navigationControlsObject.createComponent(
+      FlexLayout.getTypeName()
+    ) as FlexLayout
+    navigationLayout.width = PANEL_WIDTH_CM - 3
+    navigationLayout.height = NAV_BUTTON_HEIGHT_CM
+    navigationLayout.direction = FlexDirection.Row
+    navigationLayout.justifyContent = FlexJustify.SpaceBetween
+    navigationLayout.alignItems = FlexAlign.Center
+    this.createNavigationButton(
+      this.navigationControlsObject,
+      "BackNavigation_Control",
+      "Back",
+      () => this.closeHome()
+    )
+    this.createNavigationButton(
+      this.navigationControlsObject,
+      "HomeNavigation_Control",
+      "Home",
+      () => this.openHome()
+    )
+
     const statusPanelObject = global.scene.createSceneObject("PlacementStatus_Panel")
     statusPanelObject.setParent(this.sceneObject)
     statusPanelObject.getTransform().setLocalPosition(new vec3(0, STATUS_PANEL_Y_CM, 0.1))
@@ -210,65 +290,106 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
     this.createStrokePracticeLabel()
     this.createAdaptiveQuickMenu()
+    this.createTemporarySetupPreview()
     this.createEvent("UpdateEvent").bind(() => this.updateAdaptiveQuickMenu())
   }
 
   public showMoveMode(): void {
     this.menuPhase = "placement"
+    this.menuView = "contextual"
     this.statusText.text = "Drag the cyan handle,\nthen confirm placement"
+    this.applyMenuView()
     this.refreshQuickActions()
   }
 
   public showConfirmed(): void {
     this.menuPhase = "aiming"
+    this.menuView = "contextual"
     this.statusText.text = STROKE_GUIDANCE_TEXT
-    this.placementControlsObject.enabled = false
     this.adjustButton.opacity = 1
-    this.aimControlsObject.enabled = true
+    this.applyMenuView()
     this.refreshQuickActions()
   }
 
   public showAimMode(): void {
     this.menuPhase = "aiming"
+    this.menuView = "contextual"
     this.statusText.text = STROKE_GUIDANCE_TEXT
+    this.applyMenuView()
     this.refreshQuickActions()
   }
 
   public showRolling(): void {
     this.menuPhase = "rolling"
+    this.menuView = "contextual"
     this.statusText.text = "Ball rolling..."
-    this.aimControlsObject.enabled = false
-    this.resultControlsObject.enabled = false
+    this.applyMenuView()
     this.refreshQuickActions()
     this.setQuickMenuActive(false, true)
   }
 
   public showRollComplete(outcome: PuttClassification): void {
     this.menuPhase = "result"
+    this.menuView = "contextual"
     this.statusText.text = outcome
-    this.aimControlsObject.enabled = false
     this.resultRevealButton.opacity = 1
-    this.resultControlsObject.enabled = true
+    this.applyMenuView()
     this.refreshQuickActions()
   }
 
   public showRetryReady(): void {
     this.menuPhase = "aiming"
+    this.menuView = "contextual"
     this.statusText.text = STROKE_GUIDANCE_TEXT
-    this.placementControlsObject.enabled = false
-    this.resultControlsObject.enabled = false
     this.adjustButton.opacity = 1
-    this.aimControlsObject.enabled = true
+    this.applyMenuView()
     this.refreshQuickActions()
   }
 
   public showInitialPlacement(): void {
     this.menuPhase = "placement"
+    this.menuView = "contextual"
     this.statusText.text = "Select Move Setup,\nthen drag the cyan handle"
-    this.resultControlsObject.enabled = false
-    this.aimControlsObject.enabled = false
-    this.placementControlsObject.enabled = true
+    this.applyMenuView()
     this.refreshQuickActions()
+  }
+
+  private openHome(): void {
+    if (this.menuPhase === "rolling" || this.menuView === "home") {
+      return
+    }
+    this.menuView = "home"
+    this.statusText.text = "Practice Home\nResume or reset the station"
+    this.applyMenuView()
+  }
+
+  private closeHome(): void {
+    if (this.menuPhase === "rolling" || this.menuView !== "home") {
+      return
+    }
+    this.menuView = "contextual"
+    this.restorePhaseStatus()
+    this.applyMenuView()
+  }
+
+  private applyMenuView(): void {
+    const contextual = this.menuView === "contextual"
+    this.placementControlsObject.enabled =
+      contextual && this.menuPhase === "placement"
+    this.aimControlsObject.enabled = contextual && this.menuPhase === "aiming"
+    this.resultControlsObject.enabled =
+      contextual && this.menuPhase === "result"
+    this.homeControlsObject.enabled =
+      this.menuView === "home" && this.menuPhase !== "rolling"
+    this.navigationControlsObject.enabled = this.menuPhase !== "rolling"
+  }
+
+  private restorePhaseStatus(): void {
+    if (this.menuPhase === "placement") {
+      this.statusText.text = "Select Move Setup,\nthen drag the cyan handle"
+    } else if (this.menuPhase === "aiming") {
+      this.statusText.text = STROKE_GUIDANCE_TEXT
+    }
   }
 
   private createStrokePracticeLabel(): void {
@@ -306,6 +427,52 @@ export class GolfPlacementUI extends BaseScriptComponent {
     label.horizontalOverflow = HorizontalOverflow.Shrink
     label.verticalOverflow = VerticalOverflow.Overflow
     label.layoutRect = Rect.create(-9, 9, -1.6, 1.6)
+  }
+
+  private createTemporarySetupPreview(): void {
+    if (!this.cameraTransform) {
+      return
+    }
+    const setup = this.findSceneObjectByName("PuttingSetup_Root")
+    if (!setup) {
+      console.warn(
+        "[GolfPlacementUI] Temporary setup preview unavailable: PuttingSetup_Root not found"
+      )
+      return
+    }
+    this.setupTransform = setup.getTransform()
+
+    const root = global.scene.createSceneObject("TemporarySetupPreview_Root")
+    root.setParent(this.cameraTransform.getSceneObject())
+    root
+      .getTransform()
+      .setLocalPosition(
+        new vec3(0, TEMP_PREVIEW_UP_CM, -TEMP_PREVIEW_FORWARD_CM)
+      )
+    root.createComponent("Component.Canvas")
+    const plate = root.createComponent(BackPlate.getTypeName()) as BackPlate
+    plate.size = new vec2(TEMP_PREVIEW_WIDTH_CM, TEMP_PREVIEW_HEIGHT_CM)
+    plate.style = "dark"
+
+    const labelObject = global.scene.createSceneObject(
+      "TemporarySetupPreview_Label"
+    )
+    labelObject.setParent(root)
+    labelObject.getTransform().setLocalPosition(new vec3(0, 0, 0.6))
+    const label = labelObject.createComponent("Component.Text") as Text
+    label.text = "Temporary setup preview\n● ━━━━━━━ ◎"
+    label.size = 34
+    label.weight = 700
+    label.depthTest = true
+    label.textFill.color = new vec4(0.25, 0.95, 1, 1)
+    label.horizontalAlignment = HorizontalAlignment.Center
+    label.verticalAlignment = VerticalAlignment.Center
+    label.horizontalOverflow = HorizontalOverflow.Overflow
+    label.verticalOverflow = VerticalOverflow.Overflow
+    label.layoutRect = Rect.create(-11, 11, -2.2, 2.2)
+
+    this.temporaryPreviewRoot = root
+    root.enabled = false
   }
 
   private createAdaptiveQuickMenu(): void {
@@ -474,6 +641,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
     const deltaTime = Math.min(0.1, Math.max(0, getDeltaTime()))
     this.quickActionCooldown = Math.max(0, this.quickActionCooldown - deltaTime)
+    this.updateTemporarySetupPreview()
 
     if (this.menuPhase === "rolling") {
       this.setQuickMenuActive(false, true)
@@ -509,16 +677,30 @@ export class GolfPlacementUI extends BaseScriptComponent {
     }
   }
 
+  private updateTemporarySetupPreview(): void {
+    if (
+      !this.temporaryPreviewRoot ||
+      !this.setupTransform ||
+      !this.cameraTransform
+    ) {
+      return
+    }
+    const shouldShow =
+      this.menuPhase === "placement" &&
+      this.getTransformViewDot(this.setupTransform) < TEMP_PREVIEW_SHOW_DOT
+    this.temporaryPreviewRoot.enabled = shouldShow
+  }
+
   private getPanelViewDot(): number {
+    return this.getTransformViewDot(this.sceneObject.getTransform())
+  }
+
+  private getTransformViewDot(targetTransform: Transform): number {
     if (!this.cameraTransform) {
       return 1
     }
-
     const cameraPosition = this.cameraTransform.getWorldPosition()
-    const toPanel = this.sceneObject
-      .getTransform()
-      .getWorldPosition()
-      .sub(cameraPosition)
+    const toPanel = targetTransform.getWorldPosition().sub(cameraPosition)
     if (toPanel.length <= 0.001) {
       return 1
     }
@@ -663,5 +845,50 @@ export class GolfPlacementUI extends BaseScriptComponent {
     )
     object.createComponent(FlexItem.getTypeName())
     return object
+  }
+
+  private createNavigationButton(
+    parent: SceneObject,
+    name: string,
+    label: string,
+    onTrigger: () => void
+  ): void {
+    const object = global.scene.createSceneObject(name)
+    object.setParent(parent)
+    const button = object.createComponent(Button.getTypeName()) as Button
+    button.setVariant({
+      theme: "SnapOS3",
+      shape: "Rectangle",
+      style: "Secondary",
+    })
+    button.onInitialized.add(() => {
+      button.size = new vec3(
+        NAV_BUTTON_WIDTH_CM,
+        NAV_BUTTON_HEIGHT_CM,
+        1
+      )
+    })
+    button.onTriggerUp.add(onTrigger)
+
+    const labelObject = global.scene.createSceneObject(`${name}_Label`)
+    labelObject.setParent(object)
+    labelObject.getTransform().setLocalPosition(new vec3(0, 0, 0.08))
+    const labelText = labelObject.createComponent("Component.Text") as Text
+    labelText.text = label
+    labelText.size = NAV_BUTTON_LABEL_SIZE
+    labelText.weight = 700
+    labelText.depthTest = true
+    labelText.textFill.color = new vec4(1, 1, 1, 1)
+    labelText.horizontalAlignment = HorizontalAlignment.Center
+    labelText.verticalAlignment = VerticalAlignment.Center
+    labelText.horizontalOverflow = HorizontalOverflow.Overflow
+    labelText.verticalOverflow = VerticalOverflow.Overflow
+    labelText.layoutRect = Rect.create(
+      -(NAV_BUTTON_WIDTH_CM - 0.6) / 2,
+      (NAV_BUTTON_WIDTH_CM - 0.6) / 2,
+      -1.2,
+      1.2
+    )
+    object.createComponent(FlexItem.getTypeName())
   }
 }

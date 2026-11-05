@@ -353,7 +353,7 @@ export class GolfPlacementController extends BaseScriptComponent {
   }
 
   private resetSetup(): void {
-    if (this.phase !== "result") {
+    if (this.phase === "rolling") {
       return
     }
 
