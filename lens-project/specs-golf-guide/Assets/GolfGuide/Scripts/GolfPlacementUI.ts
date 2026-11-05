@@ -9,20 +9,21 @@ import {
   FlexJustify,
 } from "SpectaclesUIKit.lspkg/Scripts/Components/Layout2D/Flex/FlexTypes"
 import Event from "SpectaclesInteractionKit.lspkg/Utils/Event"
+import type {PuttClassification} from "./GolfOutcome"
 
 const PANEL_WIDTH_CM = 40
 const PANEL_HEIGHT_CM = 8
-const BUTTON_WIDTH_CM = 17
-const BUTTON_HEIGHT_CM = 4.2
-const FULL_BUTTON_LABEL_SIZE = 34
-const FULL_BUTTON_LABEL_WEIGHT = 600
-const STATUS_TEXT_SIZE = 68
-const STATUS_TEXT_WEIGHT = 600
+const BUTTON_WIDTH_CM = 17.8
+const BUTTON_HEIGHT_CM = 5.6
+const FULL_BUTTON_LABEL_SIZE = 72
+const FULL_BUTTON_LABEL_WEIGHT = 700
+const STATUS_TEXT_SIZE = 72
+const STATUS_TEXT_WEIGHT = 700
 const STATUS_PANEL_WIDTH_CM = 38
-const STATUS_PANEL_HEIGHT_CM = 5.2
-const STATUS_PANEL_Y_CM = -7
+const STATUS_PANEL_HEIGHT_CM = 6.8
+const STATUS_PANEL_Y_CM = -7.8
 const STROKE_GUIDANCE_TEXT =
-  "Drag the cyan ring back, then stroke forward through the ball."
+  "Drag the cyan ring back,\nthen stroke forward through the ball."
 const STROKE_LABEL_TEXT = "Stroke Practice"
 const STROKE_LABEL_SIZE = 72
 const STROKE_LABEL_WEIGHT = 700
@@ -164,7 +165,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     const tryAgainButtonObject = this.createButton(
       this.resultControlsObject,
       "TryAgain_Control",
-      "Try Again",
+      "Retry Shot",
       "Primary",
       () => this.onTryAgain.invoke()
     )
@@ -174,7 +175,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.createButton(
       this.resultControlsObject,
       "ResetSetup_Control",
-      "Reset Setup",
+      "Reset All",
       "Secondary",
       () => this.onResetSetup.invoke()
     )
@@ -196,16 +197,16 @@ export class GolfPlacementUI extends BaseScriptComponent {
     statusObject.setParent(statusPanelObject)
     statusObject.getTransform().setLocalPosition(new vec3(0, 0, 0.6))
     this.statusText = statusObject.createComponent("Component.Text") as Text
-    this.statusText.text = "Select Move Setup, then drag the cyan handle"
+    this.statusText.text = "Select Move Setup,\nthen drag the cyan handle"
     this.statusText.size = STATUS_TEXT_SIZE
     ;(this.statusText as Text & {weight?: number}).weight = STATUS_TEXT_WEIGHT
     this.statusText.depthTest = true
     this.statusText.textFill.color = new vec4(1, 1, 1, 1)
     this.statusText.horizontalAlignment = HorizontalAlignment.Center
     this.statusText.verticalAlignment = VerticalAlignment.Center
-    this.statusText.horizontalOverflow = HorizontalOverflow.Shrink
+    this.statusText.horizontalOverflow = HorizontalOverflow.Overflow
     this.statusText.verticalOverflow = VerticalOverflow.Overflow
-    this.statusText.layoutRect = Rect.create(-18, 18, -2.1, 2.1)
+    this.statusText.layoutRect = Rect.create(-18, 18, -2.9, 2.9)
 
     this.createStrokePracticeLabel()
     this.createAdaptiveQuickMenu()
@@ -214,7 +215,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   public showMoveMode(): void {
     this.menuPhase = "placement"
-    this.statusText.text = "Drag the cyan handle, then confirm placement"
+    this.statusText.text = "Drag the cyan handle,\nthen confirm placement"
     this.refreshQuickActions()
   }
 
@@ -242,9 +243,9 @@ export class GolfPlacementUI extends BaseScriptComponent {
     this.setQuickMenuActive(false, true)
   }
 
-  public showRollComplete(): void {
+  public showRollComplete(outcome: PuttClassification): void {
     this.menuPhase = "result"
-    this.statusText.text = "Practice putt complete"
+    this.statusText.text = outcome
     this.aimControlsObject.enabled = false
     this.resultRevealButton.opacity = 1
     this.resultControlsObject.enabled = true
@@ -263,7 +264,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
 
   public showInitialPlacement(): void {
     this.menuPhase = "placement"
-    this.statusText.text = "Select Move Setup, then drag the cyan handle"
+    this.statusText.text = "Select Move Setup,\nthen drag the cyan handle"
     this.resultControlsObject.enabled = false
     this.aimControlsObject.enabled = false
     this.placementControlsObject.enabled = true
@@ -430,7 +431,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     } else {
       this.quickActions = [
         {label: "Retry", invoke: () => this.onTryAgain.invoke()},
-        {label: "Reset", invoke: () => this.onResetSetup.invoke()},
+        {label: "Reset All", invoke: () => this.onResetSetup.invoke()},
       ]
     }
 
@@ -652,13 +653,13 @@ export class GolfPlacementUI extends BaseScriptComponent {
     labelText.textFill.color = new vec4(1, 1, 1, 1)
     labelText.horizontalAlignment = HorizontalAlignment.Center
     labelText.verticalAlignment = VerticalAlignment.Center
-    labelText.horizontalOverflow = HorizontalOverflow.Shrink
+    labelText.horizontalOverflow = HorizontalOverflow.Overflow
     labelText.verticalOverflow = VerticalOverflow.Overflow
     labelText.layoutRect = Rect.create(
       -(BUTTON_WIDTH_CM - 1) / 2,
       (BUTTON_WIDTH_CM - 1) / 2,
-      -1.8,
-      1.8
+      -2.25,
+      2.25
     )
     object.createComponent(FlexItem.getTypeName())
     return object

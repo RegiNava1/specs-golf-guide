@@ -305,7 +305,6 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.ballVisual.getTransform().setWorldPosition(this.rollEndPosition)
     this.rollCompletionDispatched = true
     this.phase = "result"
-    this.placementUI.showRollComplete()
 
     const targetPosition = this.targetAnchor.getTransform().getWorldPosition()
     const outcome = classifyPuttEndpoint(
@@ -313,6 +312,7 @@ export class GolfPlacementController extends BaseScriptComponent {
       targetPosition,
       this.rollStartPosition
     )
+    this.placementUI.showRollComplete(outcome.classification)
     this.outcomeFeedback.showOutcome(outcome.classification)
     const targetStable = targetPosition.distance(this.targetPositionAtRollStart) < 0.001
     console.log(
