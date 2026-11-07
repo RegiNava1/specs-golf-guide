@@ -1,4 +1,5 @@
 import {AimDragInteraction} from "./AimDragInteraction"
+import {calculateDistanceToHole} from "./DistanceToHole"
 import {
   classifyPuttEndpoint,
   PRACTICE_TARGET_ZONE_DIAMETER_CM,
@@ -301,6 +302,7 @@ export class GolfPlacementController extends BaseScriptComponent {
         this.targetAnchor.getTransform().getWorldPosition()
     }
     this.placementUI.setPracticeDistance(distanceFt)
+    this.refreshDistanceToHole()
   }
 
   private startPracticePutt(): void {
@@ -436,6 +438,7 @@ export class GolfPlacementController extends BaseScriptComponent {
       targetPosition,
       this.rollStartPosition
     )
+    this.refreshDistanceToHole()
     this.placementUI.showRollComplete(outcome.classification)
     this.completedOutcome = outcome.classification
     if (this.rollSource === "virtual-stroke" && this.pendingGhostCoachInput) {
@@ -485,6 +488,7 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.pendingGhostCoachInput = null
     this.completedGhostCoach = null
     this.completedOutcome = null
+    this.refreshDistanceToHole()
     this.placementUI.showRetryReady()
 
     const setupPosition = this.puttingSetupRoot.getTransform().getLocalPosition()
@@ -619,6 +623,14 @@ export class GolfPlacementController extends BaseScriptComponent {
         this.guideDirectionLocal = guideDirection.normalize()
       }
     }
+  }
+
+  private refreshDistanceToHole(): void {
+    const distance = calculateDistanceToHole(
+      this.ballVisual.getTransform().getWorldPosition(),
+      this.targetAnchor.getTransform().getWorldPosition()
+    )
+    this.placementUI.setDistanceToHoleFeet(distance?.feet ?? null)
   }
 
   private handleContextualViewChanged(contextual: boolean): void {

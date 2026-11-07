@@ -10,6 +10,7 @@ import {
 } from "SpectaclesUIKit.lspkg/Scripts/Components/Layout2D/Flex/FlexTypes"
 import Event from "SpectaclesInteractionKit.lspkg/Utils/Event"
 import type {PuttClassification} from "./GolfOutcome"
+import {formatDistanceToHoleFeet} from "./DistanceToHole"
 import {
   getCompactMenuPresentation,
   type CompactMenuActionId,
@@ -125,6 +126,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
   private quickCenterLabel: Text | null = null
   private quickRangeStripRoot: SceneObject | null = null
   private quickRangeStripLabel: Text | null = null
+  private distanceToHoleFeet: number | null = null
   private quickRangeMinusButton: Button | null = null
   private quickRangePlusButton: Button | null = null
   private quickRangeMinusLabel: Text | null = null
@@ -504,6 +506,14 @@ export class GolfPlacementUI extends BaseScriptComponent {
     }
   }
 
+  public setDistanceToHoleFeet(distanceFeet: number | null): void {
+    this.distanceToHoleFeet =
+      distanceFeet !== null && Number.isFinite(distanceFeet) && distanceFeet >= 0
+        ? distanceFeet
+        : null
+    this.refreshQuickRangeStrip()
+  }
+
   private applyMenuView(): void {
     const fullMenuVisible = this.fullMenuPresentationVisible
     const contextual = this.menuView === "contextual"
@@ -666,7 +676,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     labelObject.setParent(strip)
     labelObject.getTransform().setLocalPosition(new vec3(0, 0, 0.5))
     const label = labelObject.createComponent("Component.Text") as Text
-    label.text = `Range: ${this.selectedPracticeDistanceFt} ft`
+    label.text = this.getCompactDistanceText()
     label.size = QUICK_RANGE_LABEL_SIZE
     label.weight = 700
     label.depthTest = true
@@ -859,7 +869,7 @@ export class GolfPlacementUI extends BaseScriptComponent {
     if (!this.quickRangeStripRoot || !this.quickRangeStripLabel) {
       return
     }
-    this.quickRangeStripLabel.text = `Range: ${this.selectedPracticeDistanceFt} ft`
+    this.quickRangeStripLabel.text = this.getCompactDistanceText()
     this.quickRangeStripRoot.enabled = this.shouldShowQuickRangeStrip()
 
     const rangeEditable = this.isCompactRangeEditable()
@@ -895,6 +905,12 @@ export class GolfPlacementUI extends BaseScriptComponent {
     label.textFill.color = enabled
       ? new vec4(1, 1, 1, 1)
       : new vec4(0.58, 0.62, 0.66, 1)
+  }
+
+  private getCompactDistanceText(): string {
+    return `Range: ${this.selectedPracticeDistanceFt} ft\nTo Hole: ${formatDistanceToHoleFeet(
+      this.distanceToHoleFeet
+    )}`
   }
 
   private isCompactRangeEditable(): boolean {
