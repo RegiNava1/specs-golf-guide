@@ -102,7 +102,7 @@ export class GolfPlacementController extends BaseScriptComponent {
   onAwake(): void {
     this.createEvent("UpdateEvent").bind(() => this.updateRoll())
     this.createEvent("OnStartEvent").bind(() => {
-      this.dragInteraction.setInteractionEnabled(false)
+      this.dragInteraction.setInteractionEnabled(true)
       this.aimDragInteraction.setInteractionEnabled(false)
       this.strokeInteraction.setInteractionEnabled(false)
       this.strokeInteraction.setAimDirection(this.aimDirection)
@@ -111,7 +111,6 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.strokeHandle.enabled = false
       this.captureInitialArrangement()
       this.outcomeFeedback.hide()
-      this.placementUI.onMoveSetup.add(() => this.activateMoveSetup())
       this.placementUI.onConfirmPlacement.add(() => this.confirmPlacement())
       this.placementUI.onAdjustAim.add(() => this.activateAdjustAim())
       this.placementUI.onPracticePutt.add(() => this.startPracticePutt())
@@ -127,9 +126,7 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.dragInteraction.onHoverChanged.add((hovered) =>
         this.placementUI.setPlacementHandleHovered(hovered)
       )
-      this.dragInteraction.onDragStart.add(() =>
-        this.placementUI.setPlacementHandleActive(true)
-      )
+      this.dragInteraction.onDragStart.add(() => this.beginDirectPlacementDrag())
       this.dragInteraction.onDragEnd.add(() =>
         this.placementUI.setPlacementHandleActive(false)
       )
@@ -142,15 +139,15 @@ export class GolfPlacementController extends BaseScriptComponent {
     })
   }
 
-  private activateMoveSetup(): void {
+  private beginDirectPlacementDrag(): void {
     if (this.phase !== "initial-placement" && this.phase !== "moving-setup") {
       return
     }
-
-    this.phase = "moving-setup"
-    this.dragInteraction.setInteractionEnabled(true)
-    this.placementUI.showMoveMode()
-    print("[GolfPlacement] action=ACTIVATE_MOVE_SETUP phase=moving-setup")
+    if (this.phase === "initial-placement") {
+      this.phase = "moving-setup"
+      print("[GolfPlacement] action=DIRECT_MOVE_SETUP phase=moving-setup")
+    }
+    this.placementUI.setPlacementHandleActive(true)
   }
 
   private handlePlacementUpdate(worldPosition: vec3): void {
@@ -547,7 +544,7 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.pendingGhostCoachInput = null
     this.completedGhostCoach = null
     this.completedOutcome = null
-    this.dragInteraction.setInteractionEnabled(false)
+    this.dragInteraction.setInteractionEnabled(true)
     this.aimDragInteraction.setInteractionEnabled(false)
     this.strokeInteraction.setInteractionEnabled(false)
     this.strokeInteraction.setAimDirection(this.aimDirection)
