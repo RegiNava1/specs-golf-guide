@@ -68,6 +68,7 @@ export type DistanceToHoleCalculator = (
 
 export type MultiPuttSessionAction =
   | {readonly type: "CONFIRM_PLACEMENT"}
+  | {readonly type: "SET_AIM"; readonly aimDirection: GroundDirection}
   | {
       readonly type: "START_ROLL"
       readonly endpoint: WorldPointCm
@@ -173,6 +174,14 @@ export function transitionMultiPuttSession(
   switch (action.type) {
     case "CONFIRM_PLACEMENT":
       return state.phase === "placement" ? {...state, phase: "aiming"} : state
+
+    case "SET_AIM": {
+      if (state.phase !== "aiming") {
+        return state
+      }
+      const aimDirection = normalizeDirection(action.aimDirection)
+      return aimDirection ? {...state, aimDirection} : state
+    }
 
     case "START_ROLL": {
       if (state.phase !== "aiming" || state.isHoled) {

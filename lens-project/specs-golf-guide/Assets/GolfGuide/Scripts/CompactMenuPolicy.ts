@@ -1,11 +1,19 @@
-export type CompactMenuPhase = "placement" | "aiming" | "rolling" | "result"
+export type CompactMenuPhase =
+  | "placement"
+  | "aiming"
+  | "rolling"
+  | "result"
+  | "holed"
 
 export type CompactMenuActionId =
   | "lock"
   | "adjust-aim"
+  | "stroke-putt"
   | "quick-putt"
-  | "retry"
-  | "reset-all"
+  | "next-putt"
+  | "replay-shot"
+  | "reset-session"
+  | "new-session"
 
 export type CompactMenuPresentation = {
   visible: boolean
@@ -43,9 +51,19 @@ export function getCompactMenuPresentation(
     return {
       visible: true,
       rangeVisible: true,
-      rangeEditable: true,
-      centerAction: null,
+      rangeEditable: false,
+      centerAction: "stroke-putt",
       sideActions: ["adjust-aim", "quick-putt"],
+      instruction: null,
+    }
+  }
+  if (phase === "holed") {
+    return {
+      visible: true,
+      rangeVisible: true,
+      rangeEditable: false,
+      centerAction: "new-session",
+      sideActions: [],
       instruction: null,
     }
   }
@@ -53,8 +71,14 @@ export function getCompactMenuPresentation(
     visible: true,
     rangeVisible: true,
     rangeEditable: false,
-    centerAction: null,
-    sideActions: ["retry", "reset-all"],
+    centerAction: "reset-session",
+    sideActions: ["next-putt", "replay-shot"],
     instruction: null,
   }
+}
+
+export function getManualStrokeActionLabel(completedPutts: number): string {
+  return Number.isFinite(completedPutts) && completedPutts > 0
+    ? "Putt Again"
+    : "Stroke Putt"
 }

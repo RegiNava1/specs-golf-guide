@@ -52,6 +52,7 @@ export class VirtualStrokeInteraction extends BaseScriptComponent {
   private dragging = false
   private forwardStrokeStarted = false
   private aimDirection = new vec3(0, 0, -1)
+  private currentBallWorldPosition = vec3.zero()
   private initialLocalPosition = vec3.zero()
   private handleWorldY = 0
 
@@ -63,6 +64,8 @@ export class VirtualStrokeInteraction extends BaseScriptComponent {
     this.setInteractionEnabled(false)
 
     this.createEvent("OnStartEvent").bind(() => {
+      this.currentBallWorldPosition =
+        this.ballAnchor.getTransform().getWorldPosition()
       this.interactable.onTriggerStart.add((event) => this.startGesture(event))
       this.interactable.onTriggerUpdate.add((event) => this.updateGesture(event))
 
@@ -111,12 +114,83 @@ export class VirtualStrokeInteraction extends BaseScriptComponent {
     this.restoreHandle()
   }
 
+  /**
+   * Arms one manual gesture against the ball's current world-space position.
+   * The authored Ball_Anchor remains the setup reference, while multi-putt
+   * sessions move the visible ball independently after every completed roll.
+   */
+  public prepareForStroke(ballWorldPosition: vec3, direction: vec3): boolean {
+    if (
+      this.dragging ||
+      !this.setBallWorldPosition(ballWorldPosition) ||
+      !this.setAimDirection(direction)
+    ) {
+      return false
+    }
+
+    this.resetInput()
+    this.interactionEnabled = true
+    // A handle disabled during rolling/result must be re-registered with SIK
+    // after its SceneObject is visible again. The bounded false→true toggle
+    // also clears any stale pointer ownership from the previous gesture.
+    this.interactable.enabled = false
+    this.interactable.enabled = true
+
+    const handle = this.sceneObject.getTransform().getWorldPosition()
+    const addressDistance = new vec3(
+      handle.x - this.currentBallWorldPosition.x,
+      0,
+      handle.z - this.currentBallWorldPosition.z
+    ).length
+    console.log(
+      `[GolfStrokeInput] action=ARM ball=(${this.currentBallWorldPosition.x.toFixed(
+        2
+      )},${this.currentBallWorldPosition.z.toFixed(2)}) handle=(${handle.x.toFixed(
+        2
+      )},${handle.z.toFixed(2)}) addressDistanceCm=${addressDistance.toFixed(
+        2
+      )} enabled=${this.interactable.enabled}`
+    )
+    return true
+  }
+
+  public setBallWorldPosition(position: vec3): boolean {
+    if (
+      this.dragging ||
+      !Number.isFinite(position.x) ||
+      !Number.isFinite(position.y) ||
+      !Number.isFinite(position.z)
+    ) {
+      return false
+    }
+    this.currentBallWorldPosition = new vec3(position.x, position.y, position.z)
+    return true
+  }
+
+  /** Rebase the gesture's resting handle after a completed multi-putt shot. */
+  public setRestWorldPosition(position: vec3): boolean {
+    if (
+      this.dragging ||
+      !Number.isFinite(position.x) ||
+      !Number.isFinite(position.y) ||
+      !Number.isFinite(position.z)
+    ) {
+      return false
+    }
+    this.sceneObject.getTransform().setWorldPosition(position)
+    this.initialLocalPosition = this.sceneObject.getTransform().getLocalPosition()
+    this.handleWorldY = position.y
+    this.adapter = null
+    this.forwardStrokeStarted = false
+    return true
+  }
+
   private startGesture(event: InteractorEvent): void {
     if (!this.interactionEnabled || this.dragging) {
       return
     }
 
-    const ball = this.ballAnchor.getTransform().getWorldPosition()
+    const ball = this.currentBallWorldPosition
     const target = this.targetAnchor.getTransform().getWorldPosition()
     const model = new DeterministicStrokeModel({
       ball: this.toLogicPoint(ball),
@@ -130,11 +204,24 @@ export class VirtualStrokeInteraction extends BaseScriptComponent {
 
     const handlePosition = this.sceneObject.getTransform().getWorldPosition()
     const addressPoint = new vec3(handlePosition.x, ball.y, handlePosition.z)
-    if (
-      !this.adapter.addressBall(this.toLogicPoint(addressPoint)) ||
-      !this.adapter.startBackswing()
-    ) {
+    if (!this.adapter.addressBall(this.toLogicPoint(addressPoint))) {
+      const addressDistance = new vec3(
+        addressPoint.x - ball.x,
+        0,
+        addressPoint.z - ball.z
+      ).length
+      console.warn(
+        `[GolfStrokeInput] action=ADDRESS_REJECTED distanceCm=${addressDistance.toFixed(
+          2
+        )} ball=(${ball.x.toFixed(2)},${ball.z.toFixed(
+          2
+        )}) handle=(${addressPoint.x.toFixed(2)},${addressPoint.z.toFixed(2)})`
+      )
       this.cancelGesture("address-rejected")
+      return
+    }
+    if (!this.adapter.startBackswing()) {
+      this.cancelGesture("backswing-start-rejected")
       return
     }
 
@@ -302,7 +389,7 @@ export class VirtualStrokeInteraction extends BaseScriptComponent {
   }
 
   private toWorldCapture(capture: CapturedVirtualStroke): VirtualStrokeCapture {
-    const ballWorld = this.ballAnchor.getTransform().getWorldPosition()
+    const ballWorld = this.currentBallWorldPosition
     return {
       direction: new vec3(capture.direction.x, 0, -capture.direction.y),
       endpoint: new vec3(

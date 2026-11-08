@@ -147,6 +147,45 @@ test("malformed roll inputs never corrupt the session", () => {
   assert.equal(invalidDirection, initial)
 })
 
+test("aim updates are normalized only while aiming", () => {
+  const initial = createSession()
+  const aimed = transition(initial, {
+    type: "SET_AIM",
+    aimDirection: {x: 3, z: -4},
+  })
+  assert.deepEqual(aimed.aimDirection, {x: 0.6, z: -0.8})
+
+  const rolling = transition(aimed, {
+    type: "START_ROLL",
+    endpoint: point(0, -100),
+    aimDirection: aimed.aimDirection,
+    nominalDistanceCm: aimed.currentNominalDistanceCm,
+    targetZoneResult: "Missed Right",
+    source: "quick-putt",
+  })
+  assert.equal(
+    transition(rolling, {type: "SET_AIM", aimDirection: aim}).aimDirection,
+    rolling.aimDirection
+  )
+})
+
+test("an unholed completion remains in result until Next Putt is explicit", () => {
+  const result = completePutt(createSession(), point(0, -300), "On Target")
+  assert.equal(result.phase, "result")
+  assert.equal(result.completedPutts, 1)
+
+  const ignoredAim = transition(result, {
+    type: "SET_AIM",
+    aimDirection: {x: 1, z: 0},
+  })
+  assert.equal(ignoredAim, result)
+  assert.equal(ignoredAim.phase, "result")
+
+  const next = transition(result, {type: "NEXT_PUTT"})
+  assert.equal(next.phase, "aiming")
+  assert.deepEqual(next.currentPuttStartPosition, result.ballPosition)
+})
+
 test("Replay Shot restores only the most recent start and rolls back its count", () => {
   const first = completePutt(createSession(), point(20, -320), "Missed Right")
   const next = transition(first, {type: "NEXT_PUTT"})

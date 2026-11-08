@@ -14,6 +14,12 @@ import {
 } from "./GhostCoach"
 import {PlacementDragInteraction} from "./PlacementDragInteraction"
 import {
+  createMultiPuttSession,
+  transitionMultiPuttSession,
+  type MultiPuttSessionAction,
+  type MultiPuttSessionState,
+} from "./MultiPuttSession"
+import {
   DEFAULT_PRACTICE_RANGE_DISTANCE_FT,
   isPracticeRangeDistanceFt,
   practiceRangeFeetToCentimeters,
@@ -30,7 +36,8 @@ type PlacementPhase =
   | "aiming"
   | "rolling"
   | "result"
-type RollSource = "practice-putt" | "virtual-stroke"
+  | "holed"
+type RollSource = "quick-putt" | "virtual-stroke"
 const PUTT_ROLL_DURATION_SECONDS = 1.5
 /**
  * Lens adapter for the already-tested ACTIVATE_MOVE_SETUP,
@@ -76,7 +83,7 @@ export class GolfPlacementController extends BaseScriptComponent {
   private rollElapsedSeconds = 0
   private midpointLogged = false
   private rollCompletionDispatched = false
-  private rollSource: RollSource = "practice-putt"
+  private rollSource: RollSource = "quick-putt"
   private rollStrength = 1
   private initialSetupLocalPosition = vec3.zero()
   private initialBallLocalPosition = vec3.zero()
@@ -86,6 +93,8 @@ export class GolfPlacementController extends BaseScriptComponent {
   private initialAimHandleLocalPosition = vec3.zero()
   private initialPlacementHandleLocalPosition = vec3.zero()
   private initialStrokeHandleLocalPosition = vec3.zero()
+  private initialAimLineWorldOffsetFromBall = vec3.zero()
+  private initialStrokeHandleWorldOffsetFromBall = vec3.zero()
   private selectedPracticeDistanceFt: PracticeRangeDistanceFt =
     DEFAULT_PRACTICE_RANGE_DISTANCE_FT
   private authoredRangeDistanceCm = 150
@@ -100,6 +109,7 @@ export class GolfPlacementController extends BaseScriptComponent {
     null
   private completedGhostCoach: GhostCoachFeedback | null = null
   private completedOutcome: PuttClassification | null = null
+  private multiPuttSession: MultiPuttSessionState | null = null
   onAwake(): void {
     this.createEvent("UpdateEvent").bind(() => this.updateRoll())
     this.createEvent("OnStartEvent").bind(() => {
@@ -114,9 +124,13 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.outcomeFeedback.hide()
       this.placementUI.onConfirmPlacement.add(() => this.confirmPlacement())
       this.placementUI.onAdjustAim.add(() => this.activateAdjustAim())
+      this.placementUI.onPrepareManualStroke.add(() =>
+        this.prepareManualStroke()
+      )
       this.placementUI.onPracticePutt.add(() => this.startPracticePutt())
-      this.placementUI.onTryAgain.add(() => this.tryAgain())
-      this.placementUI.onResetSetup.add(() => this.resetSetup())
+      this.placementUI.onNextPutt.add(() => this.nextPutt())
+      this.placementUI.onReplayShot.add(() => this.replayShot())
+      this.placementUI.onResetSession.add(() => this.resetSession())
       this.placementUI.onPracticeDistanceSelected.add((distanceFt) =>
         this.selectPracticeDistance(distanceFt)
       )
@@ -136,6 +150,7 @@ export class GolfPlacementController extends BaseScriptComponent {
         this.handleVirtualStroke(capture)
       )
       this.applyPracticeDistance(this.selectedPracticeDistanceFt)
+      this.initializeMultiPuttSession("placement")
       print("[GolfPlacement] ready: initial-placement")
     })
   }
@@ -171,6 +186,10 @@ export class GolfPlacementController extends BaseScriptComponent {
       return
     }
 
+    if (!this.initializeMultiPuttSession("aiming")) {
+      return
+    }
+
     this.phase = "aiming"
     this.aimAdjustmentActive = false
     this.dragInteraction.setInteractionEnabled(false)
@@ -178,9 +197,10 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.placementHandle.enabled = false
     this.aimHandle.enabled = false
     this.strokeHandle.enabled = true
-    this.strokeInteraction.resetInput()
-    this.strokeInteraction.setAimDirection(this.aimDirection)
-    this.strokeInteraction.setInteractionEnabled(true)
+    this.strokeInteraction.prepareForStroke(
+      this.ballVisual.getTransform().getWorldPosition(),
+      this.aimDirection
+    )
     this.placementUI.showConfirmed()
 
     const position = this.puttingSetupRoot.getTransform().getLocalPosition()
@@ -219,6 +239,10 @@ export class GolfPlacementController extends BaseScriptComponent {
     }
 
     this.aimDirection = planar.normalize()
+    this.transitionMultiPutt({
+      type: "SET_AIM",
+      aimDirection: {x: this.aimDirection.x, z: this.aimDirection.z},
+    })
     this.strokeInteraction.setAimDirection(this.aimDirection)
     const yaw = Math.atan2(-this.aimDirection.x, -this.aimDirection.z)
     this.aimLineAnchor
@@ -238,14 +262,14 @@ export class GolfPlacementController extends BaseScriptComponent {
 
   private selectPracticeDistance(distanceFt: number): void {
     if (
-      this.phase === "rolling" ||
-      this.phase === "result" ||
+      (this.phase !== "initial-placement" && this.phase !== "moving-setup") ||
       !isPracticeRangeDistanceFt(distanceFt)
     ) {
       return
     }
 
     this.applyPracticeDistance(distanceFt)
+    this.initializeMultiPuttSession("placement")
     const distanceCm = practiceRangeFeetToCentimeters(distanceFt)
     console.log(
       `[GolfRange] action=SELECT_DISTANCE phase=${this.phase} distanceFt=${distanceFt} distanceCm=${distanceCm.toFixed(2)} target=${this.formatPosition(
@@ -263,6 +287,17 @@ export class GolfPlacementController extends BaseScriptComponent {
     )
     this.targetAnchor.getTransform().setLocalPosition(targetLocalPosition)
 
+    this.applyGuideDistance(distanceCm)
+
+    if (this.aimAdjustmentActive) {
+      this.targetPositionAtAimStart =
+        this.targetAnchor.getTransform().getWorldPosition()
+    }
+    this.placementUI.setPracticeDistance(distanceFt)
+    this.refreshDistanceToHole()
+  }
+
+  private applyGuideDistance(distanceCm: number): void {
     if (this.aimLineVisual) {
       const linePosition = this.initialAimLineVisualLocalPosition
         .sub(this.guideDirectionLocal.uniformScale(
@@ -296,13 +331,6 @@ export class GolfPlacementController extends BaseScriptComponent {
       ))
       .add(this.guideDirectionLocal.uniformScale(distanceCm))
     this.aimHandle.getTransform().setLocalPosition(aimHandlePosition)
-
-    if (this.aimAdjustmentActive) {
-      this.targetPositionAtAimStart =
-        this.targetAnchor.getTransform().getWorldPosition()
-    }
-    this.placementUI.setPracticeDistance(distanceFt)
-    this.refreshDistanceToHole()
   }
 
   private startPracticePutt(): void {
@@ -317,15 +345,15 @@ export class GolfPlacementController extends BaseScriptComponent {
 
     const direction = planar.normalize()
     const startPosition = this.ballVisual.getTransform().getWorldPosition()
-    const selectedPracticeDistanceCm = practiceRangeFeetToCentimeters(
-      this.selectedPracticeDistanceFt
-    )
+    const selectedPracticeDistanceCm =
+      this.multiPuttSession?.currentNominalDistanceCm ??
+      practiceRangeFeetToCentimeters(this.selectedPracticeDistanceFt)
     const endpoint = new vec3(
       startPosition.x + direction.x * selectedPracticeDistanceCm,
       startPosition.y,
       startPosition.z + direction.z * selectedPracticeDistanceCm
     )
-    this.beginRoll(endpoint, direction, "practice-putt", 1)
+    this.beginRoll(endpoint, direction, "quick-putt", 1)
   }
 
   private handleVirtualStroke(capture: VirtualStrokeCapture): void {
@@ -336,9 +364,9 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.pendingGhostCoachInput = {
       aimDeviation: capture.outcome.aimDeviation,
       distanceFeedback: capture.outcome.distanceFeedback,
-      selectedDistanceCm: practiceRangeFeetToCentimeters(
-        this.selectedPracticeDistanceFt
-      ),
+      selectedDistanceCm:
+        this.multiPuttSession?.currentNominalDistanceCm ??
+        practiceRangeFeetToCentimeters(this.selectedPracticeDistanceFt),
       travelDistanceCm: capture.outcome.travelDistanceCm,
     }
 
@@ -347,6 +375,35 @@ export class GolfPlacementController extends BaseScriptComponent {
       capture.direction,
       "virtual-stroke",
       capture.strength
+    )
+  }
+
+  private prepareManualStroke(): void {
+    if (
+      this.phase !== "aiming" ||
+      !this.multiPuttSession ||
+      this.multiPuttSession.phase !== "aiming"
+    ) {
+      console.warn(
+        `[GolfPhase] action=PREPARE_MANUAL_STROKE rejected controller=${this.phase} session=${this.multiPuttSession?.phase ?? "missing"}`
+      )
+      return
+    }
+
+    this.aimAdjustmentActive = false
+    this.aimDragInteraction.setInteractionEnabled(false)
+    this.aimHandle.enabled = false
+    this.strokeHandle.enabled = true
+    const interactionReady = this.strokeInteraction.prepareForStroke(
+      this.ballVisual.getTransform().getWorldPosition(),
+      this.aimDirection
+    )
+    this.placementUI.showManualStrokeReady()
+    this.verifyPhaseSynchronization("PREPARE_MANUAL_STROKE")
+    console.log(
+      `[GolfStroke] action=PREPARE_MANUAL_STROKE label=${
+        this.multiPuttSession.completedPutts > 0 ? "Putt Again" : "Stroke Putt"
+      } instruction="Drag ring back, then stroke forward" autoShot=false interactionReady=${interactionReady}`
     )
   }
 
@@ -375,6 +432,25 @@ export class GolfPlacementController extends BaseScriptComponent {
     )
     this.rollSource = source
     this.rollStrength = strength
+    const pendingOutcome = classifyPuttEndpoint(
+      this.rollEndPosition,
+      this.targetAnchor.getTransform().getWorldPosition(),
+      this.rollStartPosition
+    )
+    if (
+      !this.transitionMultiPutt({
+        type: "START_ROLL",
+        endpoint: this.toWorldPoint(this.rollEndPosition),
+        aimDirection: {x: direction.x, z: direction.z},
+        nominalDistanceCm:
+          this.multiPuttSession?.currentNominalDistanceCm ??
+          this.rollStartPosition.distance(this.targetAnchor.getTransform().getWorldPosition()),
+        targetZoneResult: pendingOutcome.classification,
+        source,
+      })
+    ) {
+      return
+    }
     if (source !== "virtual-stroke") {
       this.pendingGhostCoachInput = null
     }
@@ -429,8 +505,12 @@ export class GolfPlacementController extends BaseScriptComponent {
     }
 
     this.ballVisual.getTransform().setWorldPosition(this.rollEndPosition)
+    if (!this.transitionMultiPutt({type: "COMPLETE_ROLL"})) {
+      console.error("[GolfSession] COMPLETE_ROLL rejected by multi-putt state")
+      return
+    }
     this.rollCompletionDispatched = true
-    this.phase = "result"
+    this.phase = this.multiPuttSession!.isHoled ? "holed" : "result"
 
     const targetPosition = this.targetAnchor.getTransform().getWorldPosition()
     const outcome = classifyPuttEndpoint(
@@ -439,7 +519,22 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.rollStartPosition
     )
     this.refreshDistanceToHole()
+    if (this.multiPuttSession!.isHoled) {
+      this.completedOutcome = null
+      this.completedGhostCoach = null
+      this.pendingGhostCoachInput = null
+      this.outcomeFeedback.hide()
+      this.placementUI.showHoled(this.multiPuttSession!.completedPutts)
+      this.verifyPhaseSynchronization("COMPLETE_ROLL_HOLED")
+      const targetStable =
+        targetPosition.distance(this.targetPositionAtRollStart) < 0.001
+      console.log(
+        `[GolfPutt] action=COMPLETE_ROLL phase=holed source=${this.rollSource} putts=${this.multiPuttSession!.completedPutts} remainingCm=${this.multiPuttSession!.remainingDistanceCm.toFixed(2)} elapsed=${this.rollElapsedSeconds.toFixed(3)} position=${this.formatPosition(this.rollEndPosition)} targetStable=${targetStable}`
+      )
+      return
+    }
     this.placementUI.showRollComplete(outcome.classification)
+    this.verifyPhaseSynchronization("COMPLETE_ROLL_RESULT")
     this.completedOutcome = outcome.classification
     if (this.rollSource === "virtual-stroke" && this.pendingGhostCoachInput) {
       this.completedGhostCoach = createGhostCoachFeedback({
@@ -461,16 +556,69 @@ export class GolfPlacementController extends BaseScriptComponent {
     )
   }
 
-  private tryAgain(): void {
+  private nextPutt(): void {
     if (this.phase !== "result") {
       return
     }
-
-    this.ballVisual.getTransform().setWorldPosition(this.rollStartPosition)
-    this.selectedPracticeDistanceFt = resolvePracticeRangeLifecycleDistance(
-      this.selectedPracticeDistanceFt,
-      "retry-shot"
+    const direction = this.getDirectionFromBallToHole()
+    if (!direction) {
+      return
+    }
+    if (!this.transitionMultiPutt({type: "NEXT_PUTT"})) {
+      return
+    }
+    this.aimDirection = direction
+    this.transitionMultiPutt({
+      type: "SET_AIM",
+      aimDirection: {x: direction.x, z: direction.z},
+    })
+    this.rebaseCurrentPuttVisuals(
+      this.multiPuttSession!.currentNominalDistanceCm,
+      direction
     )
+    if (!this.enterAimingForCurrentPutt()) {
+      return
+    }
+    console.log(
+      `[GolfSession] action=NEXT_PUTT phase=aiming putts=${this.multiPuttSession!.completedPutts} ball=${this.formatPosition(this.ballVisual.getTransform().getWorldPosition())} remainingCm=${this.multiPuttSession!.remainingDistanceCm.toFixed(2)} targetFixed=${this.formatPosition(this.targetAnchor.getTransform().getWorldPosition())}`
+    )
+  }
+
+  private replayShot(): void {
+    if (this.phase !== "result") {
+      return
+    }
+    if (!this.transitionMultiPutt({type: "REPLAY_SHOT"})) {
+      return
+    }
+    const state = this.multiPuttSession!
+    this.ballVisual
+      .getTransform()
+      .setWorldPosition(this.fromWorldPoint(state.ballPosition))
+    this.aimDirection = new vec3(
+      state.aimDirection.x,
+      0,
+      state.aimDirection.z
+    )
+    this.rebaseCurrentPuttVisuals(
+      state.currentNominalDistanceCm,
+      this.aimDirection
+    )
+    if (!this.enterAimingForCurrentPutt()) {
+      return
+    }
+    console.log(
+      `[GolfSession] action=REPLAY_SHOT phase=aiming putts=${state.completedPutts} ball=${this.formatPosition(this.ballVisual.getTransform().getWorldPosition())} nominalCm=${state.currentNominalDistanceCm.toFixed(2)} feedbackCleared=true`
+    )
+  }
+
+  private enterAimingForCurrentPutt(): boolean {
+    if (!this.multiPuttSession || this.multiPuttSession.phase !== "aiming") {
+      console.error(
+        `[GolfPhase] enter-aiming rejected session=${this.multiPuttSession?.phase ?? "missing"}`
+      )
+      return false
+    }
     this.phase = "aiming"
     this.aimAdjustmentActive = false
     this.rollElapsedSeconds = 0
@@ -478,30 +626,29 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.rollCompletionDispatched = false
     this.dragInteraction.setInteractionEnabled(false)
     this.aimDragInteraction.setInteractionEnabled(false)
-    this.strokeInteraction.resetInput()
-    this.strokeInteraction.setAimDirection(this.aimDirection)
-    this.strokeInteraction.setInteractionEnabled(true)
     this.placementHandle.enabled = false
     this.aimHandle.enabled = false
     this.strokeHandle.enabled = true
+    const interactionReady = this.strokeInteraction.prepareForStroke(
+      this.ballVisual.getTransform().getWorldPosition(),
+      this.aimDirection
+    )
     this.outcomeFeedback.hide()
     this.pendingGhostCoachInput = null
     this.completedGhostCoach = null
     this.completedOutcome = null
     this.refreshDistanceToHole()
-    this.placementUI.showRetryReady()
-
-    const setupPosition = this.puttingSetupRoot.getTransform().getLocalPosition()
-    console.log(
-      `[GolfSession] action=TRY_AGAIN phase=aiming ball=${this.formatPosition(
-        this.rollStartPosition
-      )} setup=${this.formatPosition(setupPosition)} aim=(${this.aimDirection.x.toFixed(
-        4
-      )},${this.aimDirection.z.toFixed(4)}) feedbackCleared=true`
+    this.placementUI.showNextPuttReady()
+    const phaseSynchronized = this.verifyPhaseSynchronization(
+      "ENTER_NEXT_PUTT_AIMING"
     )
+    if (!interactionReady) {
+      console.error("[GolfStrokeInput] unable to rearm for current putt")
+    }
+    return interactionReady && phaseSynchronized
   }
 
-  private resetSetup(): void {
+  private resetSession(): void {
     if (this.phase === "rolling") {
       return
     }
@@ -528,6 +675,12 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.strokeHandle
       .getTransform()
       .setLocalPosition(this.initialStrokeHandleLocalPosition)
+    this.strokeInteraction.setRestWorldPosition(
+      this.strokeHandle.getTransform().getWorldPosition()
+    )
+    this.strokeInteraction.setBallWorldPosition(
+      this.ballVisual.getTransform().getWorldPosition()
+    )
     this.applyPracticeDistance(
       resolvePracticeRangeLifecycleDistance(
         this.selectedPracticeDistanceFt,
@@ -543,7 +696,7 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.rollElapsedSeconds = 0
     this.midpointLogged = false
     this.rollCompletionDispatched = false
-    this.rollSource = "practice-putt"
+    this.rollSource = "quick-putt"
     this.rollStrength = 1
     this.pendingGhostCoachInput = null
     this.completedGhostCoach = null
@@ -557,9 +710,10 @@ export class GolfPlacementController extends BaseScriptComponent {
     this.strokeHandle.enabled = false
     this.outcomeFeedback.hide()
     this.placementUI.showInitialPlacement()
+    this.initializeMultiPuttSession("placement")
 
     console.log(
-      `[GolfSession] action=RESET_SETUP phase=initial-placement setup=${this.formatPosition(
+      `[GolfSession] action=RESET_SESSION phase=initial-placement setup=${this.formatPosition(
         this.initialSetupLocalPosition
       )} ball=${this.formatPosition(
         this.ballVisual.getTransform().getWorldPosition()
@@ -588,6 +742,17 @@ export class GolfPlacementController extends BaseScriptComponent {
       this.placementHandle.getTransform().getLocalPosition()
     this.initialStrokeHandleLocalPosition =
       this.strokeHandle.getTransform().getLocalPosition()
+
+    const initialBallWorldPosition =
+      this.ballVisual.getTransform().getWorldPosition()
+    this.initialAimLineWorldOffsetFromBall = this.aimLineAnchor
+      .getTransform()
+      .getWorldPosition()
+      .sub(initialBallWorldPosition)
+    this.initialStrokeHandleWorldOffsetFromBall = this.strokeHandle
+      .getTransform()
+      .getWorldPosition()
+      .sub(initialBallWorldPosition)
 
     const fixedRange = this.initialTargetLocalPosition.sub(
       this.initialAimLineLocalPosition
@@ -623,6 +788,124 @@ export class GolfPlacementController extends BaseScriptComponent {
         this.guideDirectionLocal = guideDirection.normalize()
       }
     }
+  }
+
+  private initializeMultiPuttSession(
+    startPhase: "placement" | "aiming"
+  ): boolean {
+    const ballPosition = this.ballVisual.getTransform().getWorldPosition()
+    const holePosition = this.targetAnchor.getTransform().getWorldPosition()
+    const distance = calculateDistanceToHole(ballPosition, holePosition)
+    if (!distance || distance.centimeters <= 0) {
+      console.error("[GolfSession] unable to initialize multi-putt geometry")
+      return false
+    }
+
+    try {
+      this.multiPuttSession = createMultiPuttSession(
+        {
+          ballPosition: this.toWorldPoint(ballPosition),
+          holePosition: this.toWorldPoint(holePosition),
+          defaultAimDirection: {
+            x: this.aimDirection.x,
+            z: this.aimDirection.z,
+          },
+          nominalDistanceCm: distance.centimeters,
+          startPhase,
+        },
+        calculateDistanceToHole
+      )
+    } catch (error) {
+      console.error(`[GolfSession] initialization failed: ${error}`)
+      return false
+    }
+    this.placementUI.setCompletedPutts(0)
+    this.refreshDistanceToHole()
+    return true
+  }
+
+  private transitionMultiPutt(action: MultiPuttSessionAction): boolean {
+    if (!this.multiPuttSession) {
+      return false
+    }
+    const next = transitionMultiPuttSession(
+      this.multiPuttSession,
+      action,
+      calculateDistanceToHole
+    )
+    if (next === this.multiPuttSession) {
+      return false
+    }
+    this.multiPuttSession = next
+    this.placementUI.setCompletedPutts(next.completedPutts)
+    return true
+  }
+
+  private verifyPhaseSynchronization(context: string): boolean {
+    if (!this.multiPuttSession) {
+      console.error(`[GolfPhase] context=${context} session=missing`)
+      return false
+    }
+    const controllerPhase =
+      this.phase === "initial-placement" || this.phase === "moving-setup"
+        ? "placement"
+        : this.phase
+    const menuPhase = this.placementUI.getCurrentMenuPhase()
+    const synchronized =
+      controllerPhase === this.multiPuttSession.phase &&
+      menuPhase === this.multiPuttSession.phase
+    const message = `[GolfPhase] context=${context} controller=${controllerPhase} session=${this.multiPuttSession.phase} menu=${menuPhase} synchronized=${synchronized}`
+    if (synchronized) {
+      console.log(message)
+    } else {
+      console.error(message)
+    }
+    return synchronized
+  }
+
+  private rebaseCurrentPuttVisuals(
+    distanceCm: number,
+    direction: vec3
+  ): void {
+    const ballPosition = this.ballVisual.getTransform().getWorldPosition()
+    this.aimLineAnchor
+      .getTransform()
+      .setWorldPosition(ballPosition.add(this.initialAimLineWorldOffsetFromBall))
+    const yaw = Math.atan2(-direction.x, -direction.z)
+    this.aimLineAnchor
+      .getTransform()
+      .setLocalRotation(quat.fromEulerAngles(0, yaw, 0))
+    this.applyGuideDistance(distanceCm)
+
+    const strokeRestPosition = ballPosition.add(
+      this.initialStrokeHandleWorldOffsetFromBall
+    )
+    this.strokeInteraction.setRestWorldPosition(strokeRestPosition)
+    this.strokeInteraction.setBallWorldPosition(ballPosition)
+    this.strokeInteraction.setAimDirection(direction)
+  }
+
+  private getDirectionFromBallToHole(): vec3 | null {
+    const ballPosition = this.ballVisual.getTransform().getWorldPosition()
+    const holePosition = this.targetAnchor.getTransform().getWorldPosition()
+    const direction = new vec3(
+      holePosition.x - ballPosition.x,
+      0,
+      holePosition.z - ballPosition.z
+    )
+    return direction.length > 0.0001 ? direction.normalize() : null
+  }
+
+  private toWorldPoint(position: vec3): {x: number; y: number; z: number} {
+    return {x: position.x, y: position.y, z: position.z}
+  }
+
+  private fromWorldPoint(position: {
+    x: number
+    y: number
+    z: number
+  }): vec3 {
+    return new vec3(position.x, position.y, position.z)
   }
 
   private refreshDistanceToHole(): void {
